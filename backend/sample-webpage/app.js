@@ -4,6 +4,25 @@ const $$ = (sel) => document.querySelectorAll(sel);
 let currentPersona = "caregiver";
 let currentMode = "login";
 
+function clearAuthForms() {
+  $("#form-patient-login")?.reset();
+  $("#form-caregiver-login")?.reset();
+  $("#form-caregiver-signup")?.reset();
+}
+
+function preventAuthAutofill() {
+  document.querySelectorAll("#form-patient-login input, #form-caregiver-login input").forEach((input) => {
+    input.setAttribute("readonly", "readonly");
+    input.addEventListener(
+      "focus",
+      () => {
+        input.removeAttribute("readonly");
+      },
+      { once: true }
+    );
+  });
+}
+
 function showMessage(text, type) {
   const el = $("#message");
   el.textContent = text;
@@ -107,6 +126,8 @@ function setPersona(persona) {
 
   updateHeader();
   clearMessage();
+  clearAuthForms();
+  preventAuthAutofill();
 }
 
 function setMode(mode) {
@@ -129,6 +150,10 @@ function setMode(mode) {
 
   updateHeader();
   clearMessage();
+  clearAuthForms();
+  if (isLogin) {
+    preventAuthAutofill();
+  }
 }
 
 async function submitForm(form, path, label, options = {}) {
@@ -190,6 +215,8 @@ async function initLoginPage() {
   }
   setPersona("caregiver");
   setMode("login");
+  clearAuthForms();
+  preventAuthAutofill();
 }
 
 initLoginPage();

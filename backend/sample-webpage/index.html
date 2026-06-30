@@ -49,14 +49,14 @@
         <!-- Patient: login only -->
         <section id="view-patient" class="persona-view" hidden>
           <p class="form-note">Use the last name and numeric code your caregiver gave you.</p>
-          <form id="form-patient-login" class="auth-form">
+          <form id="form-patient-login" class="auth-form" autocomplete="off">
             <label>
               Last name
-              <input type="text" name="last_name" required autocomplete="family-name" placeholder="Smith" />
+              <input type="text" name="last_name" required autocomplete="off" placeholder="Smith" />
             </label>
             <label>
               Login code
-              <input type="password" name="login_code" required inputmode="numeric" pattern="\d{4,6}" maxlength="6" autocomplete="off" placeholder="4–6 digits" />
+              <input type="password" name="login_code" required inputmode="numeric" pattern="\d{4,6}" maxlength="6" autocomplete="one-time-code" placeholder="4–6 digits" />
             </label>
             <button type="submit" class="submit-btn">Log in</button>
           </form>
@@ -69,33 +69,33 @@
             <button type="button" class="mode-btn" data-mode="signup" role="tab" aria-selected="false">Sign up</button>
           </div>
 
-          <form id="form-caregiver-login" class="auth-form caregiver-panel active">
+          <form id="form-caregiver-login" class="auth-form caregiver-panel active" autocomplete="off">
             <label>
               Email
-              <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+              <input type="email" name="email" required autocomplete="off" spellcheck="false" placeholder="you@example.com" />
             </label>
             <label>
               Password
-              <input type="password" name="password" required autocomplete="current-password" placeholder="Your password" />
+              <input type="password" name="password" required autocomplete="off" placeholder="Your password" />
             </label>
             <button type="submit" class="submit-btn">Log in</button>
           </form>
 
-          <form id="form-caregiver-signup" class="auth-form caregiver-panel" hidden>
+          <form id="form-caregiver-signup" class="auth-form caregiver-panel" hidden autocomplete="off">
             <p class="form-note">Create an account to add patients and manage their care.</p>
             <div class="field-row">
               <label>
                 Full name
-                <input type="text" name="full_name" required autocomplete="name" placeholder="Jane Doe" />
+                <input type="text" name="full_name" required autocomplete="off" placeholder="Jane Doe" />
               </label>
               <label>
                 Last name
-                <input type="text" name="last_name" required autocomplete="family-name" placeholder="Doe" />
+                <input type="text" name="last_name" required autocomplete="off" placeholder="Doe" />
               </label>
             </div>
             <label>
               Email
-              <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+              <input type="email" name="email" required autocomplete="off" spellcheck="false" placeholder="you@example.com" />
             </label>
             <label>
               Password
@@ -103,7 +103,7 @@
             </label>
             <label>
               Phone <span class="optional">(optional)</span>
-              <input type="tel" name="phone" autocomplete="tel" placeholder="555-0100" />
+              <input type="tel" name="phone" autocomplete="off" placeholder="555-0100" />
             </label>
             <button type="submit" class="submit-btn">Create account</button>
           </form>
@@ -119,7 +119,7 @@
     </main>
   </div>
 
-  <script src="common.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="common.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
