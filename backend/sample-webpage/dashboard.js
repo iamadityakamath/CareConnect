@@ -317,18 +317,18 @@ async function loadDashboard() {
 }
 
 async function init() {
-  const session = await initCaregiverShell();
-  if (!session) return;
-
   $("#caregiver-view")?.classList.remove("hidden");
   setHomeLoading(true);
+
+  const session = await initCaregiverShell();
+  if (!session) return;
 
   try {
     await loadDashboard();
   } catch (err) {
     const msg = $("#dash-message");
     if (msg) {
-      msg.textContent = err.message;
+      msg.textContent = err.message || "Could not load dashboard.";
       msg.className = "message visible error";
     }
   } finally {

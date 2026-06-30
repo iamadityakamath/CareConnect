@@ -33,16 +33,22 @@ function enrichSession(data) {
   return enriched;
 }
 
+function isPatientPage() {
+  return /patient-home\.html/i.test(window.location.pathname);
+}
+
 function getSession() {
   try {
     const fromLocal = localStorage.getItem(SESSION_KEY);
-    if (fromLocal) {
-      return JSON.parse(fromLocal);
-    }
     const fromSession = sessionStorage.getItem(SESSION_KEY);
-    if (fromSession) {
-      return JSON.parse(fromSession);
+    const parsedLocal = fromLocal ? JSON.parse(fromLocal) : null;
+    const parsedSession = fromSession ? JSON.parse(fromSession) : null;
+
+    // Patient pages prefer long-lived patient storage; caregiver pages prefer session storage.
+    if (isPatientPage()) {
+      return parsedLocal || parsedSession;
     }
+    return parsedSession || parsedLocal;
   } catch {
     return null;
   }
@@ -239,7 +245,7 @@ async function initCaregiverShell() {
   if (!session) return null;
 
   if (session.user?.role !== "caregiver") {
-    window.location.href = "dashboard.html";
+    window.location.href = "patient-home.html";
     return null;
   }
 
