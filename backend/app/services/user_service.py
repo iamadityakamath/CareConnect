@@ -229,6 +229,42 @@ def accept_relationship(db: Client, relationship_id: str, elder_id: str) -> dict
     return result.data[0]
 
 
+def _count_active_medications(db: Client, elder_id: str) -> int:
+    """Count active medications for an elder/patient id.
+
+    Supports both CareConnect (``elder_id``) and shared PillBox (``patient_id``) schemas.
+    """
+    for column in ("elder_id", "patient_id"):
+        try:
+            meds = (
+                db.table("medications")
+                .select("id", count="exact")
+                .eq(column, elder_id)
+                .eq("active", True)
+                .execute()
+            )
+            return meds.count or 0
+        except Exception:
+            continue
+    return 0
+
+
+def _last_checkin_at(db: Client, elder_id: str) -> str | None:
+    """Return the most recent check-in timestamp for an elder, if available."""
+    try:
+        checkin = (
+            db.table("checkins")
+            .select("created_at")
+            .eq("elder_id", elder_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return checkin.data[0]["created_at"] if checkin.data else None
+    except Exception:
+        return None
+
+
 def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
     """List linked elders with last check-in and active medication counts."""
     rels = (
@@ -247,22 +283,6 @@ def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
             .limit(1)
             .execute()
         ) or {}
-        checkin = (
-            db.table("checkins")
-            .select("created_at")
-            .eq("elder_id", rel["elder_id"])
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        meds = (
-            db.table("medications")
-            .select("id", count="exact")
-            .eq("elder_id", rel["elder_id"])
-            .eq("active", True)
-            .execute()
-        )
-        last_checkin = checkin.data[0]["created_at"] if checkin.data else None
         summaries.append({
             "elder_id": rel["elder_id"],
             "full_name": elder.get("full_name"),
@@ -270,8 +290,8 @@ def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
             "email": elder.get("email"),
             "relationship_id": rel["id"],
             "status": rel["status"],
-            "last_checkin_at": last_checkin,
-            "active_medication_count": meds.count or 0,
+            "last_checkin_at": _last_checkin_at(db, rel["elder_id"]),
+            "active_medication_count": _count_active_medications(db, rel["elder_id"]),
         })
     return summaries
 

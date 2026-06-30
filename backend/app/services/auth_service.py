@@ -14,6 +14,15 @@ def _patient_auth_email(user_id: str) -> str:
     return f"patient.{user_id}@{settings.PATIENT_AUTH_EMAIL_DOMAIN}"
 
 
+def _patient_auth_metadata_role() -> str:
+    """Role stored in Supabase Auth user_metadata on create.
+
+    The shared PillBox DB trigger writes metadata role into ``profiles.role``,
+    which only allows caregiver/patient/both — not our app role ``elder``.
+    """
+    return "patient"
+
+
 def _anon_client() -> Client:
     """Return a Supabase client using the anon key for password sign-in."""
     settings = get_settings()
@@ -144,7 +153,7 @@ def provision_patient(
                 "password": login_code,
                 "email_confirm": True,
                 "user_metadata": {
-                    "role": "elder",
+                    "role": _patient_auth_metadata_role(),
                     "last_name": last_name,
                     "full_name": full_name,
                 },
