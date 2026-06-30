@@ -8,6 +8,7 @@ from app.database import get_supabase_client
 from app.db_utils import first_row, public_user
 from app.exceptions import ForbiddenError, UnauthorizedError
 from app.jwt_validation import decode_supabase_jwt
+from app.pillbox_compat import enrich_elder_profile, fetch_user_row
 
 security = HTTPBearer(auto_error=False)
 
@@ -55,13 +56,12 @@ def get_current_user(
     if not user_id:
         raise UnauthorizedError("Invalid token payload")
 
-    profile = first_row(
-        db.table("users").select("*").eq("id", user_id).limit(1).execute()
-    )
+    profile = fetch_user_row(db, user_id)
 
     if not profile or profile.get("role") not in VALID_ROLES:
         raise UnauthorizedError("Account not set up. Complete registration first.")
 
+    profile = enrich_elder_profile(db, profile)
     safe = public_user(profile)
     return {
         "id": safe["id"],

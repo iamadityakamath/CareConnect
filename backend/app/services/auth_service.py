@@ -9,7 +9,7 @@ from supabase import Client, create_client
 from app.config import get_settings
 from app.db_utils import first_row, public_user
 from app.exceptions import ForbiddenError, UnauthorizedError, ValidationError
-from app.pillbox_compat import ensure_pillbox_patient
+from app.pillbox_compat import ensure_pillbox_patient, enrich_elder_profile, fetch_user_row, filter_users_payload
 
 
 def _patient_auth_email(user_id: str) -> str:
@@ -134,9 +134,7 @@ def caregiver_login(db: Client, email: str, password: str) -> dict:
         raise UnauthorizedError("Invalid email or password")
 
     user_id = auth_response.user.id
-    profile_row = first_row(
-        db.table("users").select("*").eq("id", user_id).limit(1).execute()
-    )
+    profile_row = fetch_user_row(db, user_id)
 
     if not profile_row:
         raise UnauthorizedError("Caregiver profile not found. Complete registration.")
@@ -209,6 +207,7 @@ def provision_patient(
     if notes:
         profile_payload["notes"] = notes.strip()
 
+    profile_payload = filter_users_payload(db, profile_payload)
     profile_result = db.table("users").insert(profile_payload).execute()
     if not profile_result.data:
         db.auth.admin.delete_user(user_id)
@@ -231,10 +230,19 @@ def provision_patient(
         db.auth.admin.delete_user(user_id)
         raise ValidationError("Failed to link patient to caregiver")
 
-    ensure_pillbox_patient(db, caregiver_id, user_id, full_name)
+    ensure_pillbox_patient(
+        db,
+        caregiver_id,
+        user_id,
+        full_name,
+        date_of_birth=date_of_birth,
+        notes=notes,
+    )
+
+    patient_profile = enrich_elder_profile(db, profile_result.data[0])
 
     return {
-        "patient": public_user(profile_result.data[0]),
+        "patient": public_user(patient_profile),
         "relationship_id": rel_result.data[0]["id"],
     }
 
@@ -309,9 +317,7 @@ def refresh_session(db: Client, refresh_token: str) -> dict:
     if not user_id:
         raise UnauthorizedError("Session expired. Please sign in again.")
 
-    profile_row = first_row(
-        db.table("users").select("*").eq("id", user_id).limit(1).execute()
-    )
+    profile_row = fetch_user_row(db, user_id)
     if not profile_row:
         raise UnauthorizedError("User profile not found")
 
@@ -320,6 +326,7 @@ def refresh_session(db: Client, refresh_token: str) -> dict:
         refresh_token = payload.get("refresh_token") or refresh_token
         expires_in = payload.get("expires_in") or 3600
 
+    profile_row = enrich_elder_profile(db, profile_row)
     return _session_response(_RefreshedSession(), profile_row, set_patient_persistent=False)
 
 
@@ -331,15 +338,8 @@ def update_patient_login_code(
 
     verify_caregiver_for_elder(db, caregiver_id, patient_id)
 
-    patient = first_row(
-        db.table("users")
-        .select("*")
-        .eq("id", patient_id)
-        .eq("role", "elder")
-        .limit(1)
-        .execute()
-    )
-    if not patient:
+    patient = fetch_user_row(db, patient_id)
+    if not patient or patient.get("role") != "elder":
         raise ValidationError("Patient not found")
 
     try:
@@ -350,15 +350,24 @@ def update_patient_login_code(
     except Exception as exc:
         raise ValidationError("Failed to update login code") from exc
 
-    result = (
-        db.table("users")
-        .update({
+    profile_updates = filter_users_payload(
+        db,
+        {
             "login_code": login_code,
             "login_code_set_at": datetime.now(dt_timezone.utc).isoformat(),
-        })
-        .eq("id", patient_id)
-        .execute()
+        },
     )
-    if not result.data:
-        raise ValidationError("Failed to update patient profile")
-    return public_user(result.data[0])
+    if profile_updates:
+        result = (
+            db.table("users")
+            .update(profile_updates)
+            .eq("id", patient_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValidationError("Failed to update patient profile")
+        return public_user(enrich_elder_profile(db, result.data[0]))
+
+    refreshed = enrich_elder_profile(db, patient)
+    refreshed["login_code"] = login_code
+    return public_user(refreshed)

@@ -7,7 +7,26 @@ from supabase import Client
 from app.db_utils import first_row
 
 _MEDICATIONS_ID_COLUMN: str | None = None
+_USERS_COLUMNS: frozenset[str] | None = None
+_PATIENTS_TABLE_AVAILABLE: bool | None = None
 _DOSE_INSTRUCTIONS_PREFIX = "__dose_json:"
+
+_USERS_BASE_COLUMNS = (
+    "id",
+    "email",
+    "auth_email",
+    "full_name",
+    "last_name",
+    "role",
+    "phone",
+    "timezone",
+    "account_status",
+    "login_code",
+    "login_code_set_at",
+    "created_at",
+)
+_USERS_OPTIONAL_DETAIL_COLUMNS = ("date_of_birth", "address", "notes")
+_USERS_PROBE_COLUMNS = _USERS_BASE_COLUMNS + _USERS_OPTIONAL_DETAIL_COLUMNS
 
 
 def _postgres_error_code(exc: Exception) -> str | None:
@@ -51,27 +70,182 @@ def medications_use_patient_id(db: Client) -> bool:
     return get_medications_id_column(db) == "patient_id"
 
 
-def ensure_pillbox_patient(
+def get_users_columns(db: Client) -> frozenset[str]:
+    """Return ``users`` columns that exist in the connected database."""
+    global _USERS_COLUMNS
+    if _USERS_COLUMNS is not None:
+        return _USERS_COLUMNS
+
+    available: set[str] = set()
+    for column in _USERS_PROBE_COLUMNS:
+        try:
+            db.table("users").select(column).limit(1).execute()
+            available.add(column)
+        except Exception as exc:
+            if not _is_missing_column_error(exc):
+                raise
+
+    _USERS_COLUMNS = frozenset(available)
+    return _USERS_COLUMNS
+
+
+def users_select_expr(db: Client, *columns: str) -> str:
+    """Build a safe ``users`` select list, skipping columns absent from the schema."""
+    allowed = get_users_columns(db)
+    selected = [column for column in columns if column in allowed]
+    if not selected:
+        selected = ["id"]
+    return ", ".join(dict.fromkeys(selected))
+
+
+def has_patients_table(db: Client) -> bool:
+    """Return True when the shared PillBox ``patients`` table is available."""
+    global _PATIENTS_TABLE_AVAILABLE
+    if _PATIENTS_TABLE_AVAILABLE is not None:
+        return _PATIENTS_TABLE_AVAILABLE
+
+    try:
+        db.table("patients").select("id").limit(1).execute()
+        _PATIENTS_TABLE_AVAILABLE = True
+    except Exception:
+        _PATIENTS_TABLE_AVAILABLE = False
+    return _PATIENTS_TABLE_AVAILABLE
+
+
+def filter_users_payload(db: Client, payload: dict) -> dict:
+    """Drop ``users`` fields that are not present in the connected schema."""
+    allowed = get_users_columns(db)
+    return {key: value for key, value in payload.items() if key in allowed}
+
+
+def fetch_user_row(db: Client, user_id: str) -> dict | None:
+    """Fetch a ``users`` row using only columns that exist in the schema."""
+    columns = ", ".join(sorted(get_users_columns(db)))
+    return first_row(
+        db.table("users").select(columns).eq("id", user_id).limit(1).execute()
+    )
+
+
+def fetch_pillbox_patient_row(db: Client, patient_id: str) -> dict | None:
+    """Fetch PillBox patient metadata when the ``patients`` table is present."""
+    if not has_patients_table(db):
+        return None
+    try:
+        return first_row(
+            db.table("patients")
+            .select("display_name, date_of_birth, notes")
+            .eq("id", patient_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return None
+
+
+def merge_patient_details(user_row: dict, patient_row: dict | None) -> dict:
+    """Merge CareConnect ``users`` fields with PillBox ``patients`` metadata."""
+    merged = dict(user_row)
+    if not patient_row:
+        return merged
+
+    if patient_row.get("display_name") and not merged.get("full_name"):
+        merged["full_name"] = patient_row["display_name"]
+    if patient_row.get("date_of_birth") and not merged.get("date_of_birth"):
+        merged["date_of_birth"] = str(patient_row["date_of_birth"])[:10]
+    if patient_row.get("notes") is not None and merged.get("notes") is None:
+        merged["notes"] = patient_row["notes"]
+    return merged
+
+
+def enrich_elder_profile(db: Client, user_row: dict) -> dict:
+    """Attach PillBox patient details to a CareConnect elder profile."""
+    if user_row.get("role") != "elder":
+        return user_row
+    patient_row = fetch_pillbox_patient_row(db, user_row["id"])
+    return merge_patient_details(user_row, patient_row)
+
+
+def split_profile_updates(db: Client, updates: dict) -> tuple[dict, dict]:
+    """Split profile updates between ``users`` and PillBox ``patients`` tables."""
+    users_columns = get_users_columns(db)
+    users_updates: dict = {}
+    patients_updates: dict = {}
+
+    for key, value in updates.items():
+        if key == "full_name":
+            users_updates["full_name"] = value
+            if has_patients_table(db):
+                patients_updates["display_name"] = value
+        elif key == "date_of_birth":
+            if "date_of_birth" in users_columns:
+                users_updates["date_of_birth"] = value
+            if has_patients_table(db):
+                patients_updates["date_of_birth"] = value
+        elif key == "notes":
+            if "notes" in users_columns:
+                users_updates["notes"] = value
+            if has_patients_table(db):
+                patients_updates["notes"] = value
+        elif key == "address":
+            if "address" in users_columns:
+                users_updates["address"] = value
+        elif key in users_columns:
+            users_updates[key] = value
+
+    return users_updates, patients_updates
+
+
+def update_pillbox_patient_details(
     db: Client,
-    caregiver_id: str,
     patient_id: str,
-    display_name: str,
+    caregiver_id: str,
+    updates: dict,
 ) -> None:
-    """Ensure a PillBox ``patients`` row exists for a CareConnect elder profile."""
+    """Write patient-specific fields to PillBox ``patients`` when present."""
+    if not updates or not has_patients_table(db):
+        return
+
     try:
         existing = first_row(
             db.table("patients").select("id").eq("id", patient_id).limit(1).execute()
         )
         if existing:
+            db.table("patients").update(updates).eq("id", patient_id).execute()
             return
 
-        db.table("patients").insert(
-            {
-                "id": patient_id,
-                "display_name": display_name or "Patient",
-                "created_by": caregiver_id,
-            }
-        ).execute()
+        payload = {"id": patient_id, "created_by": caregiver_id, **updates}
+        payload.setdefault("display_name", updates.get("display_name") or "Patient")
+        db.table("patients").insert(payload).execute()
+    except Exception:
+        return
+
+
+def ensure_pillbox_patient(
+    db: Client,
+    caregiver_id: str,
+    patient_id: str,
+    display_name: str,
+    date_of_birth: str | None = None,
+    notes: str | None = None,
+) -> None:
+    """Ensure a PillBox ``patients`` row exists for a CareConnect elder profile."""
+    payload: dict = {"display_name": display_name or "Patient"}
+    if date_of_birth:
+        payload["date_of_birth"] = date_of_birth
+    if notes is not None and notes.strip():
+        payload["notes"] = notes.strip()
+
+    try:
+        existing = first_row(
+            db.table("patients").select("id").eq("id", patient_id).limit(1).execute()
+        )
+        if existing:
+            db.table("patients").update(payload).eq("id", patient_id).execute()
+            return
+
+        payload["id"] = patient_id
+        payload["created_by"] = caregiver_id
+        db.table("patients").insert(payload).execute()
     except Exception:
         # PillBox patients table not present — CareConnect-only database.
         return

@@ -4,6 +4,14 @@ from supabase import Client
 
 from app.db_utils import first_row, public_user
 from app.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.pillbox_compat import (
+    enrich_elder_profile,
+    fetch_user_row,
+    filter_users_payload,
+    split_profile_updates,
+    update_pillbox_patient_details,
+    users_select_expr,
+)
 
 ALLOWED_PROFILE_UPDATES = frozenset({
     "full_name", "last_name", "phone", "timezone", "date_of_birth", "address", "notes",
@@ -12,20 +20,18 @@ ALLOWED_PROFILE_UPDATES = frozenset({
 
 def _get_user_profile(db: Client, user_id: str) -> dict:
     """Fetch a user profile row by id."""
-    profile = first_row(
-        db.table("users").select("*").eq("id", user_id).limit(1).execute()
-    )
+    profile = fetch_user_row(db, user_id)
     if not profile:
         raise NotFoundError("User not found")
+    profile = enrich_elder_profile(db, profile)
     return public_user(profile)
 
 
 def get_me_profile(db: Client, user_id: str, auth_user: dict) -> dict:
     """Return current user profile merged from Supabase auth and users table."""
-    profile = first_row(
-        db.table("users").select("*").eq("id", user_id).limit(1).execute()
-    )
+    profile = fetch_user_row(db, user_id)
     if profile:
+        profile = enrich_elder_profile(db, profile)
         return public_user(profile)
     return public_user(auth_user)
 
@@ -78,13 +84,12 @@ def update_user_profile(
     db: Client, user_id: str, requester_id: str, updates: dict
 ) -> dict:
     """Update profile fields for self, or for a linked patient when requester is their caregiver."""
+    profile = fetch_user_row(db, user_id)
+    if not profile:
+        raise NotFoundError("User not found")
+
     if user_id != requester_id:
-        target = first_row(
-            db.table("users").select("role").eq("id", user_id).limit(1).execute()
-        )
-        if not target:
-            raise NotFoundError("User not found")
-        if target.get("role") == "elder":
+        if profile.get("role") == "elder":
             verify_caregiver_for_elder(db, requester_id, user_id)
         else:
             raise ForbiddenError("Can only update your own profile")
@@ -103,15 +108,34 @@ def update_user_profile(
         dob = filtered["date_of_birth"]
         filtered["date_of_birth"] = dob.isoformat() if isinstance(dob, date) else str(dob)[:10]
 
-    result = (
-        db.table("users")
-        .update(filtered)
-        .eq("id", user_id)
-        .execute()
-    )
-    if not result.data:
-        raise NotFoundError("User not found")
-    return public_user(result.data[0])
+    users_updates, patients_updates = split_profile_updates(db, filtered)
+
+    if users_updates:
+        result = (
+            db.table("users")
+            .update(users_updates)
+            .eq("id", user_id)
+            .execute()
+        )
+        if not result.data:
+            raise NotFoundError("User not found")
+
+    if patients_updates and profile.get("role") == "elder":
+        caregiver_id = requester_id
+        if user_id == requester_id:
+            rel = first_row(
+                db.table("relationships")
+                .select("caregiver_id")
+                .eq("elder_id", user_id)
+                .eq("status", "active")
+                .limit(1)
+                .execute()
+            )
+            if rel:
+                caregiver_id = rel["caregiver_id"]
+        update_pillbox_patient_details(db, user_id, caregiver_id, patients_updates)
+
+    return _get_user_profile(db, user_id)
 
 
 def _verify_linked(db: Client, user_a: str, user_b: str) -> None:
@@ -285,21 +309,13 @@ def get_patient_detail(db: Client, caregiver_id: str, patient_id: str) -> dict:
     """Return full patient profile for a linked caregiver, including login code."""
     verify_caregiver_for_elder(db, caregiver_id, patient_id)
 
-    profile = first_row(
-        db.table("users")
-        .select("*")
-        .eq("id", patient_id)
-        .eq("role", "elder")
-        .limit(1)
-        .execute()
-    )
-    if not profile:
+    profile = fetch_user_row(db, patient_id)
+    if not profile or profile.get("role") != "elder":
         raise NotFoundError("Patient not found")
 
+    profile = enrich_elder_profile(db, profile)
     safe = public_user(profile)
     safe["login_code"] = profile.get("login_code")
-    if profile.get("date_of_birth"):
-        safe["date_of_birth"] = str(profile["date_of_birth"])[:10]
     return safe
 
 
@@ -316,7 +332,9 @@ def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
     for rel in rels.data or []:
         elder = first_row(
             db.table("users")
-            .select("full_name, last_name, email, timezone, login_code")
+            .select(users_select_expr(
+                db, "full_name", "last_name", "email", "timezone", "login_code"
+            ))
             .eq("id", rel["elder_id"])
             .limit(1)
             .execute()
