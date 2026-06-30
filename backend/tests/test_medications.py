@@ -63,8 +63,8 @@ def test_list_medications_service(mock_db, monkeypatch):
     )
     monkeypatch.setattr(
         medication_service,
-        "medications_use_patient_id",
-        lambda db: False,
+        "get_medications_id_column",
+        lambda db: "elder_id",
     )
 
     result = medication_service.list_medications(

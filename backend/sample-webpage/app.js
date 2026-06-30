@@ -82,7 +82,7 @@ function redirectAfterAuth(data, { isSignup = false } = {}) {
   showMessage("Success! Redirecting…", "success");
 
   const isCaregiver = data.user?.role === "caregiver";
-  let target = "dashboard.html";
+  let target = isCaregiver ? "dashboard.html" : "patient-home.html";
 
   if (isCaregiver && isSignup) {
     target = "onboard-patient.html";
@@ -201,7 +201,8 @@ $("#form-caregiver-signup").addEventListener("submit", (e) => {
 
 const existing = getSession();
 if (existing?.access_token && existing?.user) {
-  window.location.href = "dashboard.html";
+  window.location.href =
+    existing.user.role === "caregiver" ? "dashboard.html" : "patient-home.html";
 } else {
   setPersona("caregiver");
   setMode("login");

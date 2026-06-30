@@ -38,3 +38,22 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content={"detail": exc.message},
         )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+        """Return a safe client response for unexpected database/network failures."""
+        message = str(exc).lower()
+        if "readerror" in message or "connecterror" in message or "timeout" in message:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Database temporarily unavailable. Please try again."},
+            )
+        if "42703" in message or ("column" in message and "does not exist" in message):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Database schema mismatch. Contact support."},
+            )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An unexpected error occurred."},
+        )

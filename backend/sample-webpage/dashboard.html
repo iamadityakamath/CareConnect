@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CareConnect — Home</title>
+  <title>CareConnect — Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -21,64 +21,86 @@
     </header>
 
     <nav class="dash-nav" id="caregiver-nav" aria-label="Caregiver navigation">
-      <a href="dashboard.html" class="dash-nav-link active" aria-current="page">Home</a>
+      <a href="dashboard.html" class="dash-nav-link active" aria-current="page">Dashboard</a>
       <a href="patients.html" class="dash-nav-link">View patients</a>
       <a href="onboard-patient.html" class="dash-nav-link">Add patient</a>
       <a href="apis.html" class="dash-nav-link">APIs</a>
     </nav>
 
-    <main class="dash-main dash-main-home">
+    <main class="dash-main dash-main-dashboard">
       <div id="caregiver-view" class="hidden">
         <header class="dash-section-header">
           <div>
-            <p class="eyebrow">Caregiver home</p>
+            <p class="eyebrow">Care dashboard</p>
             <h2>Hello, <span id="caregiver-greeting">Caregiver</span></h2>
-            <p class="dash-subtitle">Manage profiles, medications, and daily check-ins for your patients.</p>
+            <p class="dash-subtitle">Medication adherence across your patients — today and this week.</p>
           </div>
+          <p id="dash-date" class="cg-dash-date"></p>
         </header>
 
         <div id="home-loading" class="home-loading" aria-live="polite" aria-busy="true">
           <div class="home-loading-banner">
             <span class="loading-spinner" aria-hidden="true"></span>
-            Loading your patients…
+            Loading adherence dashboard…
           </div>
-          <div class="home-skeleton-stats">
+          <div class="cg-skeleton-grid">
+            <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
           </div>
-          <ul class="home-skeleton-list" aria-hidden="true">
-            <li class="skeleton-row"></li>
-            <li class="skeleton-row"></li>
-            <li class="skeleton-row"></li>
-          </ul>
+          <div class="skeleton-row cg-skeleton-chart"></div>
         </div>
 
         <div id="home-content" class="hidden">
-          <section class="home-overview" aria-label="Overview">
-            <article class="home-stat-card">
-              <span class="home-stat-value" id="stat-patients">0</span>
-              <span class="home-stat-label">Patients</span>
+          <section class="cg-dash-overview" aria-label="Today's overview">
+            <article class="cg-stat-card cg-stat-card-primary">
+              <span class="cg-stat-value" id="stat-today-pct">—</span>
+              <span class="cg-stat-label">Today adherence</span>
+              <span class="cg-stat-sub" id="stat-today-sub"></span>
             </article>
-            <article class="home-stat-card">
-              <span class="home-stat-value" id="stat-meds">0</span>
-              <span class="home-stat-label">Active medications</span>
+            <article class="cg-stat-card">
+              <span class="cg-stat-value" id="stat-taken">0</span>
+              <span class="cg-stat-label">Doses taken</span>
+              <span class="cg-stat-sub" id="stat-on-time-sub"></span>
             </article>
-            <article class="home-stat-card home-stat-card-warn">
-              <span class="home-stat-value" id="stat-attention">0</span>
-              <span class="home-stat-label">Need attention</span>
+            <article class="cg-stat-card cg-stat-card-warn">
+              <span class="cg-stat-value" id="stat-overdue">0</span>
+              <span class="cg-stat-label">Overdue / missed</span>
+              <span class="cg-stat-sub" id="stat-attention-sub"></span>
+            </article>
+            <article class="cg-stat-card">
+              <span class="cg-stat-value" id="stat-week-pct">—</span>
+              <span class="cg-stat-label">7-day adherence</span>
+              <span class="cg-stat-sub">All patients combined</span>
             </article>
           </section>
 
-          <section class="home-section">
+          <section class="cg-dash-panel" aria-label="Weekly trend">
             <div class="home-section-head">
-              <h3 class="home-section-title">Your patients</h3>
-              <a href="patients.html" class="home-section-link">View all →</a>
+              <h3 class="home-section-title">Last 7 days</h3>
+              <p class="home-section-hint">Green = taken on time · Red = missed or late</p>
             </div>
-            <ul id="patients-home-list" class="patients-home-list"></ul>
+            <div id="adherence-chart" class="adherence-chart"></div>
+            <p id="chart-empty" class="cg-chart-empty hidden">No dose history yet for this week.</p>
+          </section>
+
+          <section id="cg-attention-section" class="cg-dash-panel hidden" aria-label="Needs attention">
+            <div class="home-section-head">
+              <h3 class="home-section-title">Needs attention now</h3>
+            </div>
+            <ul id="cg-attention-list" class="cg-attention-list"></ul>
+          </section>
+
+          <section class="cg-dash-panel" aria-label="Patient adherence">
+            <div class="home-section-head">
+              <h3 class="home-section-title">Patient adherence today</h3>
+              <a href="patients.html" class="home-section-link">All patients →</a>
+            </div>
+            <div id="cg-patient-cards" class="cg-patient-cards"></div>
             <div id="patients-empty" class="home-empty-card hidden">
               <p class="home-empty-title">No patients yet</p>
-              <p class="home-empty-desc">Add a patient to set up their login code, profile, medications, and check-ins.</p>
+              <p class="home-empty-desc">Add a patient to track medications and adherence.</p>
               <a href="onboard-patient.html" class="submit-btn home-empty-btn">Add your first patient</a>
             </div>
           </section>
@@ -86,7 +108,6 @@
           <section id="home-complete-section" class="home-section hidden" aria-label="Profiles to complete">
             <div class="home-section-head">
               <h3 class="home-section-title">Complete patient details</h3>
-              <p class="home-section-hint">Add missing profile info so care plans are accurate.</p>
             </div>
             <ul id="home-complete-list" class="home-complete-list"></ul>
           </section>
@@ -97,41 +118,23 @@
             </div>
             <div class="home-actions-grid">
               <a href="onboard-patient.html" class="home-action-card">
-                <span class="home-action-icon" aria-hidden="true">+</span>
                 <span class="home-action-title">Add patient</span>
-                <span class="home-action-desc">Create login code &amp; basic profile</span>
-              </a>
-              <a href="patients.html" class="home-action-card">
-                <span class="home-action-icon" aria-hidden="true">◎</span>
-                <span class="home-action-title">Patient overview</span>
-                <span class="home-action-desc">Medication counts &amp; check-in status</span>
+                <span class="home-action-desc">Create login &amp; profile</span>
               </a>
               <a id="home-action-meds" href="patients.html" class="home-action-card">
-                <span class="home-action-icon" aria-hidden="true">Rx</span>
                 <span class="home-action-title">Manage medications</span>
-                <span class="home-action-desc">Schedules, doses &amp; instructions</span>
-              </a>
-              <a href="apis.html" class="home-action-card home-action-card-muted">
-                <span class="home-action-icon" aria-hidden="true">{ }</span>
-                <span class="home-action-title">API reference</span>
-                <span class="home-action-desc">All endpoints &amp; Swagger docs</span>
+                <span class="home-action-desc">Schedules &amp; doses</span>
               </a>
             </div>
           </section>
         </div>
       </div>
 
-      <div id="patient-view" class="hidden">
-        <h2>Welcome back</h2>
-        <div id="user-card" class="user-card"></div>
-        <p class="dash-hint">You're signed in as a patient. Your caregiver manages your care plan.</p>
-      </div>
-
       <div id="dash-message" class="message" role="status"></div>
     </main>
   </div>
 
-  <script src="common.js"></script>
-  <script src="dashboard.js"></script>
+  <script src="common.js?v=2"></script>
+  <script src="dashboard.js?v=2"></script>
 </body>
 </html>

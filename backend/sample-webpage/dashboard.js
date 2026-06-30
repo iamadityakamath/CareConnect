@@ -5,31 +5,18 @@ const PROFILE_FIELDS = [
   { key: "notes", label: "Care notes" },
 ];
 
+const STATUS_LABELS = {
+  overdue: { label: "Overdue", className: "cg-status-overdue" },
+  in_progress: { label: "In progress", className: "cg-status-progress" },
+  upcoming: { label: "Upcoming", className: "cg-status-upcoming" },
+  complete: { label: "All done today", className: "cg-status-complete" },
+  no_meds: { label: "No meds scheduled", className: "cg-status-none" },
+};
+
 function setHomeLoading(isLoading) {
   $("#home-loading")?.classList.toggle("hidden", !isLoading);
   $("#home-content")?.classList.toggle("hidden", isLoading);
-  const loadingEl = $("#home-loading");
-  if (loadingEl) {
-    loadingEl.setAttribute("aria-busy", isLoading ? "true" : "false");
-  }
-}
-
-function formatCheckin(lastCheckinAt) {
-  if (!lastCheckinAt) {
-    return { label: "No check-in yet", className: "stat-warn" };
-  }
-  return { label: "Checked in recently", className: "stat-ok" };
-}
-
-function getMissingProfileFields(patient) {
-  return PROFILE_FIELDS.filter((field) => !patient[field.key]?.toString().trim());
-}
-
-function needsAttention(patient) {
-  const missing = getMissingProfileFields(patient);
-  const noMeds = (patient.active_medication_count ?? 0) === 0;
-  const noCheckin = !patient.last_checkin_at;
-  return missing.length > 0 || noMeds || noCheckin;
+  $("#home-loading")?.setAttribute("aria-busy", isLoading ? "true" : "false");
 }
 
 function patientDetailUrl(patientId, section) {
@@ -37,17 +24,210 @@ function patientDetailUrl(patientId, section) {
   return section ? `${base}#${section}` : base;
 }
 
-function renderOverviewStats(elders) {
-  const totalMeds = elders.reduce((sum, p) => sum + (p.active_medication_count ?? 0), 0);
-  const attention = elders.filter(needsAttention).length;
+function formatTime(isoString) {
+  if (!isoString) return "—";
+  try {
+    return new Date(isoString).toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return isoString;
+  }
+}
 
-  const patientsEl = $("#stat-patients");
-  const medsEl = $("#stat-meds");
-  const attentionEl = $("#stat-attention");
+function formatShortDate(isoString) {
+  try {
+    return new Date(isoString).toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return isoString;
+  }
+}
 
-  if (patientsEl) patientsEl.textContent = String(elders.length);
-  if (medsEl) medsEl.textContent = String(totalMeds);
-  if (attentionEl) attentionEl.textContent = String(attention);
+function getMissingProfileFields(patient) {
+  return PROFILE_FIELDS.filter((field) => !patient[field.key]?.toString().trim());
+}
+
+function renderOverview(dashboard) {
+  const { totals, overall_today_pct, overall_week_pct } = dashboard;
+
+  $("#stat-today-pct").textContent = `${overall_today_pct}%`;
+  $("#stat-today-sub").textContent =
+    totals.doses_scheduled_today > 0
+      ? `${totals.doses_taken_today} of ${totals.doses_scheduled_today} doses`
+      : "No doses scheduled today";
+
+  $("#stat-taken").textContent = String(totals.doses_taken_today);
+  $("#stat-on-time-sub").textContent =
+    totals.doses_late_today > 0
+      ? `${totals.doses_on_time_today} on time · ${totals.doses_late_today} late`
+      : `${totals.doses_on_time_today} on time`;
+
+  const overdueTotal = totals.doses_overdue_today + totals.doses_missed_today;
+  $("#stat-overdue").textContent = String(overdueTotal);
+  $("#stat-attention-sub").textContent =
+    totals.patients_need_attention > 0
+      ? `${totals.patients_need_attention} patient${totals.patients_need_attention === 1 ? "" : "s"} need attention`
+      : "All patients on track";
+
+  $("#stat-week-pct").textContent = `${overall_week_pct}%`;
+
+  const dateEl = $("#dash-date");
+  if (dateEl) {
+    dateEl.textContent = formatShortDate(dashboard.date);
+  }
+}
+
+function renderChart(breakdown) {
+  const chart = $("#adherence-chart");
+  const empty = $("#chart-empty");
+  if (!chart || !empty) return;
+
+  if (!breakdown.length) {
+    chart.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+  const maxTotal = Math.max(...breakdown.map((d) => d.taken + d.missed), 1);
+
+  chart.innerHTML = breakdown
+    .map((day) => {
+      const total = day.taken + day.missed;
+      const takenPct = total ? (day.taken / maxTotal) * 100 : 0;
+      const missedPct = total ? (day.missed / maxTotal) * 100 : 0;
+      const dayLabel = new Date(day.date).toLocaleDateString(undefined, {
+        weekday: "short",
+      });
+
+      return `
+        <div class="adherence-chart-col">
+          <div class="adherence-chart-bars" title="${day.taken} taken, ${day.missed} missed">
+            <div class="adherence-bar adherence-bar-taken" style="height: ${takenPct}%"></div>
+            <div class="adherence-bar adherence-bar-missed" style="height: ${missedPct}%"></div>
+          </div>
+          <span class="adherence-chart-label">${escapeHtml(dayLabel)}</span>
+          <span class="adherence-chart-meta">${day.taken}/${total || 0}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderAttentionList(patients) {
+  const section = $("#cg-attention-section");
+  const list = $("#cg-attention-list");
+  if (!section || !list) return;
+
+  const alerts = patients.flatMap((patient) =>
+    (patient.overdue_doses || []).map((dose) => ({
+      patient,
+      dose,
+    }))
+  );
+
+  if (!alerts.length) {
+    section.classList.add("hidden");
+    list.innerHTML = "";
+    return;
+  }
+
+  section.classList.remove("hidden");
+  list.innerHTML = alerts
+    .map(
+      ({ patient, dose }) => `
+      <li class="cg-attention-item">
+        <div class="cg-attention-main">
+          <strong>${escapeHtml(patient.full_name || "Patient")}</strong>
+          <span>${escapeHtml(dose.medication_name)} · ${escapeHtml(dose.dosage)}</span>
+          <span class="cg-attention-time">Due ${escapeHtml(formatTime(dose.scheduled_for))} · ${escapeHtml(formatOverdueDuration(dose.minutes_overdue))} overdue</span>
+        </div>
+        <a href="${patientDetailUrl(patient.elder_id, "medications")}" class="btn-secondary btn-sm">View</a>
+      </li>
+    `
+    )
+    .join("");
+}
+
+function renderPatientAdherenceCards(patients, elderMeta = {}) {
+  const container = $("#cg-patient-cards");
+  const empty = $("#patients-empty");
+  if (!container || !empty) return;
+
+  if (!patients.length) {
+    container.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+  container.innerHTML = patients
+    .map((patient) => {
+      const meta = elderMeta[patient.elder_id] || {};
+      const status = STATUS_LABELS[patient.status] || STATUS_LABELS.upcoming;
+      const pct = patient.adherence_today_pct ?? 0;
+      const detailUrl = patientDetailUrl(patient.elder_id);
+
+      const metrics = [
+        { label: "Taken", value: patient.today_taken, tone: "ok" },
+        { label: "On time", value: patient.today_on_time, tone: "ok" },
+        { label: "Pending", value: patient.today_pending, tone: "pending" },
+        { label: "Overdue", value: patient.today_overdue + patient.today_missed, tone: "warn" },
+      ];
+
+      return `
+        <article class="cg-patient-card ${status.className}">
+          <header class="cg-patient-card-header">
+            <div class="cg-patient-identity">
+              <div class="patient-home-avatar" aria-hidden="true">${escapeHtml((patient.full_name || "P").charAt(0).toUpperCase())}</div>
+              <div>
+                <h4>${escapeHtml(patient.full_name || "Patient")}</h4>
+                <span class="cg-patient-meta">${escapeHtml(patient.last_name || "—")}${meta.login_code ? ` · Code <code class="inline-code">${escapeHtml(meta.login_code)}</code>` : ""}</span>
+              </div>
+            </div>
+            <span class="cg-status-badge ${status.className}">${status.label}</span>
+          </header>
+
+          <div class="cg-patient-progress">
+            <div class="cg-progress-ring" style="--pct: ${pct}">
+              <span class="cg-progress-value">${pct}%</span>
+            </div>
+            <div class="cg-patient-progress-detail">
+              <p class="cg-progress-title">Today: ${patient.today_taken} of ${patient.today_scheduled} doses</p>
+              <p class="cg-progress-sub">
+                ${patient.next_dose_at ? `Next dose ${escapeHtml(formatTime(patient.next_dose_at))}` : patient.status === "complete" ? "All doses taken today" : "—"}
+                ${patient.last_taken_at ? ` · Last taken ${escapeHtml(formatTime(patient.last_taken_at))}` : ""}
+              </p>
+              <p class="cg-progress-week">7-day: ${patient.week_adherence_pct}% (${patient.week_taken} taken, ${patient.week_missed} missed)</p>
+            </div>
+          </div>
+
+          <div class="cg-patient-metrics">
+            ${metrics
+              .map(
+                (m) => `
+              <div class="cg-metric cg-metric-${m.tone}">
+                <span class="cg-metric-value">${m.value}</span>
+                <span class="cg-metric-label">${m.label}</span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+
+          <footer class="cg-patient-card-footer">
+            <a href="${detailUrl}" class="patient-home-quick-link patient-home-quick-link-primary">Full details</a>
+            <a href="${patientDetailUrl(patient.elder_id, "medications")}" class="patient-home-quick-link">Medications</a>
+          </footer>
+        </article>
+      `;
+    })
+    .join("");
 }
 
 function renderCompleteProfilesSection(elders) {
@@ -71,92 +251,17 @@ function renderCompleteProfilesSection(elders) {
 
   section.classList.remove("hidden");
   list.innerHTML = incomplete
-    .map(({ patient, missing, noMeds }) => {
-      const gaps = [
-        ...missing.map((field) => field.label),
-        ...(noMeds ? ["Medications"] : []),
-      ];
-      const pct = Math.round(
-        ((PROFILE_FIELDS.length + 1 - gaps.length) / (PROFILE_FIELDS.length + 1)) * 100
-      );
-
-      return `
-        <li class="home-complete-item">
-          <div class="home-complete-main">
-            <strong>${escapeHtml(patient.full_name || "Patient")}</strong>
-            <span class="home-complete-gap">Missing: ${escapeHtml(gaps.join(", "))}</span>
-            <div class="home-complete-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-              <span class="home-complete-bar-fill" style="width: ${pct}%"></span>
-            </div>
-          </div>
-          <div class="home-complete-actions">
-            <a href="${patientDetailUrl(patient.elder_id, "profile")}" class="btn-secondary btn-sm">Edit profile</a>
-            ${noMeds ? `<a href="${patientDetailUrl(patient.elder_id, "medications")}" class="btn-secondary btn-sm">Add meds</a>` : ""}
-          </div>
-        </li>
-      `;
-    })
-    .join("");
-}
-
-function renderHomePatientList(elders) {
-  const list = $("#patients-home-list");
-  const empty = $("#patients-empty");
-
-  renderOverviewStats(elders);
-  renderCompleteProfilesSection(elders);
-
-  const medsAction = $("#home-action-meds");
-  if (medsAction && elders.length) {
-    medsAction.href = patientDetailUrl(elders[0].elder_id, "medications");
-  }
-
-  if (!elders.length) {
-    empty?.classList.remove("hidden");
-    if (list) list.innerHTML = "";
-    return;
-  }
-
-  empty?.classList.add("hidden");
-  if (!list) return;
-
-  list.innerHTML = elders
-    .map((p) => {
-      const checkin = formatCheckin(p.last_checkin_at);
-      const missing = getMissingProfileFields(p);
-      const detailUrl = patientDetailUrl(p.elder_id);
-
-      return `
-    <li class="patient-home-card">
-      <a href="${detailUrl}" class="patient-home-link-main">
-        <div class="patient-home-avatar" aria-hidden="true">${escapeHtml((p.full_name || "P").charAt(0).toUpperCase())}</div>
-        <div class="patient-home-info">
-          <strong>${escapeHtml(p.full_name || "Patient")}</strong>
-          <span class="patient-home-meta">
-            Last name: ${escapeHtml(p.last_name || "—")}
-            · Code: <code class="inline-code">${escapeHtml(p.login_code || "—")}</code>
-          </span>
-          ${
-            missing.length
-              ? `<span class="patient-home-missing">${escapeHtml(missing.map((f) => f.label).join(" · "))} not set</span>`
-              : `<span class="patient-home-complete">Profile complete</span>`
-          }
+    .map(
+      ({ patient, missing, noMeds }) => `
+      <li class="home-complete-item">
+        <div class="home-complete-main">
+          <strong>${escapeHtml(patient.full_name || "Patient")}</strong>
+          <span class="home-complete-gap">Missing: ${escapeHtml([...missing.map((f) => f.label), ...(noMeds ? ["Medications"] : [])].join(", "))}</span>
         </div>
-      </a>
-      <div class="patient-home-side">
-        <div class="patient-home-badges">
-          <span class="stat">${p.active_medication_count ?? 0} meds</span>
-          <span class="stat ${checkin.className}">${checkin.label}</span>
-        </div>
-        <div class="patient-home-quick">
-          <a href="${patientDetailUrl(p.elder_id, "profile")}" class="patient-home-quick-link">Profile</a>
-          <a href="${patientDetailUrl(p.elder_id, "medications")}" class="patient-home-quick-link">Meds</a>
-          <a href="${detailUrl}" class="patient-home-quick-link patient-home-quick-link-primary">Details</a>
-        </div>
-      </div>
-    </li>
-  `;
-    })
+        <a href="${patientDetailUrl(patient.elder_id, "profile")}" class="btn-secondary btn-sm">Complete</a>
+      </li>
+    `
+    )
     .join("");
 }
 
@@ -173,18 +278,42 @@ async function enrichPatientDetails(elders) {
   );
 }
 
-async function loadPatients() {
-  const elders = await apiRequest("/relationships/my-elders");
-  if (!elders) return [];
+function elderMetaMap(elders) {
+  return Object.fromEntries(
+    elders.map((e) => [
+      e.elder_id,
+      { login_code: e.login_code, active_medication_count: e.active_medication_count },
+    ])
+  );
+}
 
-  if (!elders.length) {
-    renderHomePatientList([]);
-    return [];
+function renderDashboard(dashboard, elders) {
+  renderOverview(dashboard);
+  renderChart(dashboard.daily_breakdown || []);
+  renderAttentionList(dashboard.patients || []);
+  renderPatientAdherenceCards(dashboard.patients || [], elderMetaMap(elders));
+  renderCompleteProfilesSection(elders);
+
+  const medsAction = $("#home-action-meds");
+  if (medsAction && dashboard.patients?.length) {
+    medsAction.href = patientDetailUrl(dashboard.patients[0].elder_id, "medications");
+  }
+}
+
+async function loadDashboard() {
+  const [dashboard, elders] = await Promise.all([
+    apiRequest("/relationships/adherence-dashboard"),
+    apiRequest("/relationships/my-elders"),
+  ]);
+
+  if (!dashboard || !elders) return;
+
+  let enriched = elders;
+  if (elders.length) {
+    enriched = await enrichPatientDetails(elders);
   }
 
-  const enriched = await enrichPatientDetails(elders);
-  renderHomePatientList(enriched);
-  return enriched;
+  renderDashboard(dashboard, enriched);
 }
 
 async function init() {
@@ -195,8 +324,7 @@ async function init() {
   }
 
   if (session.user.role !== "caregiver") {
-    bindLogout();
-    renderPatientDashboard(session.user);
+    window.location.href = "patient-home.html";
     return;
   }
 
@@ -205,7 +333,7 @@ async function init() {
   setHomeLoading(true);
 
   try {
-    await loadPatients();
+    await loadDashboard();
   } catch (err) {
     const msg = $("#dash-message");
     if (msg) {

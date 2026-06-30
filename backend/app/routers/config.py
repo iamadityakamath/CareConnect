@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.routing import APIRoute
 
 from app.config import get_settings
-from app.constants import MEDICATION_PRESETS
+from app.constants import CONTACT_PRESETS, MEDICAL_HISTORY_PRESETS, MEDICATION_PRESETS
 
 router = APIRouter()
 
@@ -23,6 +23,18 @@ def public_config():
 def medication_presets():
     """Common medication templates for caregiver selection in the UI."""
     return {"presets": MEDICATION_PRESETS}
+
+
+@router.get("/medical-history-presets")
+def medical_history_presets():
+    """Common medical history templates for caregiver selection in the UI."""
+    return {"presets": MEDICAL_HISTORY_PRESETS}
+
+
+@router.get("/contact-presets")
+def contact_presets():
+    """Common healthcare contact templates for caregiver selection in the UI."""
+    return {"presets": CONTACT_PRESETS}
 
 
 @router.get("/api-routes")

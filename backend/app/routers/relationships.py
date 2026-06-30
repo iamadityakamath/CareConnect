@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from supabase import Client
 
 from app.dependencies import get_current_user, get_db, require_caregiver, require_patient
+from app.models.dashboard import CaregiverDashboardResponse
 from app.models.relationship import (
     CaregiverSummary,
     ElderSummary,
     RelationshipInviteCreate,
     RelationshipResponse,
 )
-from app.services import user_service
+from app.services import medication_service, user_service
 
 router = APIRouter()
 
@@ -42,6 +43,17 @@ def my_elders(
     db: Client = Depends(get_db),
 ):
     return user_service.get_my_elders(db, current_user["id"])
+
+
+@router.get("/adherence-dashboard", response_model=CaregiverDashboardResponse)
+def adherence_dashboard(
+    days: int = Query(7, ge=1, le=30),
+    current_user: dict = Depends(require_caregiver),
+    db: Client = Depends(get_db),
+):
+    return medication_service.get_caregiver_adherence_dashboard(
+        db, current_user["id"], days
+    )
 
 
 @router.get("/my-caregivers", response_model=list[CaregiverSummary])

@@ -21,7 +21,7 @@
     </header>
 
     <nav class="dash-nav" aria-label="Caregiver navigation">
-      <a href="dashboard.html" class="dash-nav-link">Home</a>
+      <a href="dashboard.html" class="dash-nav-link">Dashboard</a>
       <a href="patients.html" class="dash-nav-link">View patients</a>
       <a href="onboard-patient.html" class="dash-nav-link">Add patient</a>
       <a href="apis.html" class="dash-nav-link">APIs</a>
@@ -83,14 +83,7 @@
         <form id="form-medication" class="detail-add-form auth-form">
           <p class="form-section-title">Add medication</p>
 
-          <label>
-            Choose from common medications
-            <select id="med-preset-select">
-              <option value="">— Select a medication —</option>
-              <option value="custom">Custom medication (enter manually)</option>
-            </select>
-          </label>
-
+          <p class="form-section-title">Common medications</p>
           <div id="med-preset-list" class="med-preset-list" aria-label="Common medications"></div>
 
           <div id="med-custom-fields">
@@ -113,10 +106,9 @@
               </label>
             </div>
             <div id="med-time-fields" class="med-time-fields">
-              <span class="detail-label">Dose times</span>
+              <span class="detail-label">Dose times &amp; instructions</span>
               <div id="med-time-inputs" class="med-time-inputs"></div>
             </div>
-            <label>Instructions <input type="text" name="instructions" placeholder="Take with food" /></label>
           </div>
 
           <button type="submit" class="submit-btn">Add medication</button>
@@ -132,6 +124,10 @@
         <p id="history-empty" class="detail-empty hidden">No medical history entries yet.</p>
         <form id="form-history" class="detail-add-form auth-form">
           <p class="form-section-title">Add entry</p>
+
+          <p class="form-section-title">Common entries</p>
+          <div id="history-preset-list" class="med-preset-list" aria-label="Common medical history"></div>
+
           <div class="field-row">
             <label>Category
               <select name="category" required>
@@ -158,6 +154,10 @@
         <p id="contact-empty" class="detail-empty hidden">No contacts yet.</p>
         <form id="form-contact" class="detail-add-form auth-form">
           <p class="form-section-title">Add contact</p>
+
+          <p class="form-section-title">Common contacts</p>
+          <div id="contact-preset-list" class="med-preset-list" aria-label="Common healthcare contacts"></div>
+
           <div class="field-row">
             <label>Name <input type="text" name="name" required placeholder="Dr. Patel" /></label>
             <label>Type

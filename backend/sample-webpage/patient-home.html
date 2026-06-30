@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — My medications</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="patient-body">
+  <div class="patient-app">
+    <header class="patient-header">
+      <div class="patient-brand">
+        <span class="logo-mark small" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/><path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+        </span>
+        <span>CareConnect</span>
+      </div>
+      <button type="button" id="btn-logout" class="logout-btn">Log out</button>
+    </header>
+
+    <main class="patient-main">
+      <header class="patient-greeting">
+        <p class="patient-date" id="patient-date"></p>
+        <h1 id="patient-greeting">Hello</h1>
+        <p class="patient-subtitle">Tap the button when you take each medicine.</p>
+      </header>
+
+      <div id="patient-loading" class="patient-loading" aria-live="polite" aria-busy="true">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <span>Loading your medications…</span>
+      </div>
+
+      <div id="patient-content" class="hidden">
+        <section class="patient-summary" aria-label="Today's progress">
+          <div class="patient-summary-item">
+            <span class="patient-summary-value" id="summary-taken">0</span>
+            <span class="patient-summary-label">Taken</span>
+          </div>
+          <div class="patient-summary-item">
+            <span class="patient-summary-value" id="summary-left">0</span>
+            <span class="patient-summary-label">Still due</span>
+          </div>
+        </section>
+
+        <section class="mindfulness-card" aria-label="Mindfulness break">
+          <div class="mindfulness-card-inner">
+            <div>
+              <h2 class="mindfulness-title">Take a calming break</h2>
+              <p class="mindfulness-desc">A short guided breathing session to help you relax and reset.</p>
+            </div>
+            <button type="button" id="btn-open-breathing" class="mindfulness-start-btn">
+              Start breathing
+            </button>
+          </div>
+        </section>
+
+        <nav id="period-nav" class="period-nav hidden" aria-label="Jump to time of day">
+          <button type="button" class="period-nav-btn" data-period="morning">Morning</button>
+          <button type="button" class="period-nav-btn" data-period="afternoon">Afternoon</button>
+          <button type="button" class="period-nav-btn" data-period="night">Night</button>
+        </nav>
+
+        <section class="patient-meds-section" aria-label="Today's medications">
+          <div id="dose-empty" class="patient-empty hidden">
+            <p class="patient-empty-title">No medications scheduled today</p>
+            <p class="patient-empty-desc">Your caregiver will add them for you.</p>
+          </div>
+          <div id="dose-periods" class="dose-periods"></div>
+        </section>
+      </div>
+
+      <div id="patient-message" class="message patient-toast" role="status"></div>
+    </main>
+
+    <div id="breathing-overlay" class="breathing-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="breathing-title" hidden>
+      <div class="breathing-screen">
+        <button type="button" id="btn-close-breathing" class="breathing-close">Close</button>
+        <h2 id="breathing-title" class="breathing-title">Mindful breathing</h2>
+        <p id="breathing-subtitle" class="breathing-subtitle">Follow the circle. Breathe slowly and gently.</p>
+
+        <div class="breathing-visual" aria-hidden="true">
+          <div id="breathing-circle" class="breathing-circle"></div>
+        </div>
+
+        <p id="breathing-phase" class="breathing-phase" aria-live="polite">Tap Begin when you're ready</p>
+        <p id="breathing-counter" class="breathing-counter"></p>
+
+        <div class="breathing-actions">
+          <button type="button" id="btn-begin-breathing" class="dose-take-btn breathing-action-btn">Begin</button>
+          <button type="button" id="btn-stop-breathing" class="btn-secondary breathing-action-btn hidden">Stop</button>
+          <button type="button" id="btn-done-breathing" class="dose-take-btn breathing-action-btn hidden">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="common.js?v=2"></script>
+  <script src="patient-mindfulness.js?v=2"></script>
+  <script src="patient-home.js?v=2"></script>
+</body>
+</html>

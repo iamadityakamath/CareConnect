@@ -3,6 +3,8 @@ const patientId = params.get("id");
 
 let patient = null;
 let medicationPresets = window.MEDICATION_PRESETS || [];
+let historyPresets = window.MEDICAL_HISTORY_PRESETS || [];
+let contactPresets = window.CONTACT_PRESETS || [];
 
 function showPageMessage(text, type) {
   const el = $("#page-message");
@@ -126,7 +128,13 @@ function getCurrentMedTimes() {
     .filter(Boolean);
 }
 
-function renderMedTimeInputs(count, values = []) {
+function getCurrentDoseInstructions() {
+  return Array.from(document.querySelectorAll(".med-dose-instruction-input")).map((input) =>
+    input.value.trim() || null
+  );
+}
+
+function renderMedTimeInputs(count, values = [], instructionValues = []) {
   const container = $("#med-time-inputs");
   const countSelect = $("#med-times-count");
   if (!container) return;
@@ -136,21 +144,33 @@ function renderMedTimeInputs(count, values = []) {
 
   const defaults = DEFAULT_DOSE_TIMES[num] || DEFAULT_DOSE_TIMES[1];
   const times = Array.from({ length: num }, (_, i) => values[i] || defaults[i] || "08:00");
+  const instructions = Array.from({ length: num }, (_, i) => instructionValues[i] || "");
 
   container.innerHTML = times
     .map(
       (time, index) => `
-    <label class="med-time-label">
-      Dose ${index + 1}
-      <input type="time" class="med-time-input" value="${escapeHtml(time)}" required />
-    </label>
+    <div class="med-dose-row">
+      <label class="med-time-label">
+        Dose ${index + 1} time
+        <input type="time" class="med-time-input" value="${escapeHtml(time)}" required />
+      </label>
+      <label class="med-instruction-label">
+        Instruction
+        <input
+          type="text"
+          class="med-dose-instruction-input"
+          value="${escapeHtml(instructions[index])}"
+          placeholder="e.g. Take with food"
+        />
+      </label>
+    </div>
   `
     )
     .join("");
 }
 
-function setMedTimesCount(count, values = [], updateFrequency = false) {
-  renderMedTimeInputs(count, values);
+function setMedTimesCount(count, values = [], instructionValues = [], updateFrequency = false) {
+  renderMedTimeInputs(count, values, instructionValues);
   if (updateFrequency) {
     const form = $("#form-medication");
     const num = Math.min(Math.max(Number(count) || 1, 1), 6);
@@ -160,15 +180,25 @@ function setMedTimesCount(count, values = [], updateFrequency = false) {
   }
 }
 
+function presetDoseInstructions(preset, count) {
+  if (preset.dose_instructions?.length) {
+    return preset.dose_instructions;
+  }
+  if (preset.instructions) {
+    return Array.from({ length: count }, () => preset.instructions);
+  }
+  return [];
+}
+
 function fillMedicationForm(preset) {
   const form = $("#form-medication");
   if (!form || !preset) return;
   form.name.value = preset.name || "";
   form.dosage.value = preset.dosage || "";
   form.frequency.value = preset.frequency || "";
-  form.instructions.value = preset.instructions || "";
   const times = preset.scheduled_times || [];
-  setMedTimesCount(times.length || 1, times, false);
+  const count = times.length || 1;
+  setMedTimesCount(count, times, presetDoseInstructions(preset, count), false);
 }
 
 function clearMedicationForm() {
@@ -177,30 +207,24 @@ function clearMedicationForm() {
   form.name.value = "";
   form.dosage.value = "";
   form.frequency.value = "";
-  form.instructions.value = "";
-  setMedTimesCount(1, [], true);
+  setMedTimesCount(1, [], [], true);
 }
 
 function initMedicationTimeInputs() {
   const countSelect = $("#med-times-count");
   countSelect?.addEventListener("change", () => {
     const existing = getCurrentMedTimes();
-    setMedTimesCount(countSelect.value, existing, true);
+    const existingInstructions = getCurrentDoseInstructions();
+    setMedTimesCount(countSelect.value, existing, existingInstructions, true);
   });
-  setMedTimesCount(1, [], true);
+  setMedTimesCount(1, [], [], true);
 }
 
 function initMedicationPresets() {
-  const select = $("#med-preset-select");
   const list = $("#med-preset-list");
-  if (!select || !list) return;
+  if (!list) return;
 
   medicationPresets.forEach((preset) => {
-    const option = document.createElement("option");
-    option.value = preset.id;
-    option.textContent = `${preset.name} (${preset.dosage})`;
-    select.appendChild(option);
-
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "med-preset-chip";
@@ -210,27 +234,102 @@ function initMedicationPresets() {
       <span class="med-preset-chip-meta">${escapeHtml(preset.dosage)} · ${escapeHtml(preset.frequency)}</span>
     `;
     btn.addEventListener("click", () => {
-      select.value = preset.id;
       fillMedicationForm(preset);
       list.querySelectorAll(".med-preset-chip").forEach((el) => el.classList.remove("selected"));
       btn.classList.add("selected");
     });
     list.appendChild(btn);
   });
+}
 
-  select.addEventListener("change", () => {
-    const value = select.value;
-    list.querySelectorAll(".med-preset-chip").forEach((el) => {
-      el.classList.toggle("selected", el.dataset.presetId === value);
+const HISTORY_CATEGORY_LABELS = {
+  condition: "Condition",
+  allergy: "Allergy",
+  surgery: "Surgery",
+  note: "Note",
+};
+
+function fillHistoryForm(preset) {
+  const form = $("#form-history");
+  if (!form || !preset) return;
+  form.category.value = preset.category || "condition";
+  form.title.value = preset.title || "";
+  form.description.value = preset.description || "";
+}
+
+function clearHistoryFormSelection() {
+  $("#history-preset-list")?.querySelectorAll(".med-preset-chip").forEach((el) => {
+    el.classList.remove("selected");
+  });
+}
+
+function initHistoryPresets() {
+  const list = $("#history-preset-list");
+  if (!list) return;
+
+  historyPresets.forEach((preset) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "med-preset-chip";
+    btn.dataset.presetId = preset.id;
+    const categoryLabel = HISTORY_CATEGORY_LABELS[preset.category] || preset.category;
+    btn.innerHTML = `
+      <span class="med-preset-chip-name">${escapeHtml(preset.title)}</span>
+      <span class="med-preset-chip-meta">${escapeHtml(categoryLabel)}</span>
+    `;
+    btn.addEventListener("click", () => {
+      fillHistoryForm(preset);
+      list.querySelectorAll(".med-preset-chip").forEach((el) => el.classList.remove("selected"));
+      btn.classList.add("selected");
     });
+    list.appendChild(btn);
+  });
+}
 
-    if (!value || value === "custom") {
-      if (value === "custom") clearMedicationForm();
-      return;
-    }
+const CONTACT_TYPE_LABELS = {
+  doctor: "Doctor",
+  hospital: "Hospital",
+  pharmacy: "Pharmacy",
+  emergency: "Emergency",
+};
 
-    const preset = medicationPresets.find((p) => p.id === value);
-    if (preset) fillMedicationForm(preset);
+function fillContactForm(preset) {
+  const form = $("#form-contact");
+  if (!form || !preset) return;
+  form.name.value = preset.name || "";
+  form.contact_type.value = preset.contact_type || "doctor";
+  form.phone.value = preset.phone || "";
+  form.specialty.value = preset.specialty || "";
+  form.address.value = preset.address || "";
+  form.is_primary.checked = Boolean(preset.is_primary);
+}
+
+function clearContactFormSelection() {
+  $("#contact-preset-list")?.querySelectorAll(".med-preset-chip").forEach((el) => {
+    el.classList.remove("selected");
+  });
+}
+
+function initContactPresets() {
+  const list = $("#contact-preset-list");
+  if (!list) return;
+
+  contactPresets.forEach((preset) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "med-preset-chip";
+    btn.dataset.presetId = preset.id;
+    const typeLabel = CONTACT_TYPE_LABELS[preset.contact_type] || preset.contact_type;
+    btn.innerHTML = `
+      <span class="med-preset-chip-name">${escapeHtml(preset.name)}</span>
+      <span class="med-preset-chip-meta">${escapeHtml(typeLabel)}${preset.specialty ? ` · ${escapeHtml(preset.specialty)}` : ""}</span>
+    `;
+    btn.addEventListener("click", () => {
+      fillContactForm(preset);
+      list.querySelectorAll(".med-preset-chip").forEach((el) => el.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+    list.appendChild(btn);
   });
 }
 
@@ -245,16 +344,24 @@ function renderMedications(meds) {
   empty?.classList.add("hidden");
   list.innerHTML = meds
     .map(
-      (m) => `
+      (m) => {
+        const times = m.scheduled_times || [];
+        const doseInstructions = m.dose_instructions || [];
+        const scheduleLines = times.map((time, index) => {
+          const instruction = doseInstructions[index] || "";
+          return instruction ? `${time} — ${instruction}` : time;
+        });
+
+        return `
     <li class="detail-list-item">
       <div>
         <strong>${escapeHtml(m.name)}</strong>
         <span class="detail-meta">${escapeHtml(m.dosage || m.dosage_text || "")} · ${escapeHtml(m.frequency || "—")}</span>
-        ${m.instructions ? `<span class="detail-meta">${escapeHtml(m.instructions)}</span>` : ""}
-        ${m.scheduled_times?.length ? `<span class="detail-meta">Times: ${escapeHtml(m.scheduled_times.join(", "))}</span>` : ""}
+        ${scheduleLines.length ? `<span class="detail-meta">${scheduleLines.map((line) => escapeHtml(line)).join(" · ")}</span>` : ""}
       </div>
     </li>
-  `
+  `;
+      }
     )
     .join("");
 }
@@ -274,7 +381,7 @@ function renderHistory(entries) {
     <li class="detail-list-item">
       <div>
         <strong>${escapeHtml(e.title)}</strong>
-        <span class="detail-tag">${escapeHtml(e.category)}</span>
+        <span class="detail-tag">${escapeHtml(HISTORY_CATEGORY_LABELS[e.category] || e.category)}</span>
         ${e.description ? `<span class="detail-meta">${escapeHtml(e.description)}</span>` : ""}
         ${e.date_occurred ? `<span class="detail-meta">${formatDate(e.date_occurred)}</span>` : ""}
       </div>
@@ -299,7 +406,7 @@ function renderContacts(contacts) {
     <li class="detail-list-item">
       <div>
         <strong>${escapeHtml(c.name)}</strong>
-        <span class="detail-tag">${escapeHtml(c.contact_type)}${c.is_primary ? " · primary" : ""}</span>
+        <span class="detail-tag">${escapeHtml(CONTACT_TYPE_LABELS[c.contact_type] || c.contact_type)}${c.is_primary ? " · primary" : ""}</span>
         <span class="detail-meta">${escapeHtml(c.phone)}${c.specialty ? ` · ${escapeHtml(c.specialty)}` : ""}</span>
         ${c.address ? `<span class="detail-meta">${escapeHtml(c.address)}</span>` : ""}
       </div>
@@ -380,6 +487,8 @@ async function init() {
     await loadPatient();
     initMedicationTimeInputs();
     initMedicationPresets();
+    initHistoryPresets();
+    initContactPresets();
     await loadSections();
     scrollToSectionHash();
   } catch (err) {
@@ -438,6 +547,7 @@ $("#form-medication")?.addEventListener("submit", async (e) => {
   try {
     const body = formToObject(e.target);
     const times = getCurrentMedTimes();
+    const doseInstructions = getCurrentDoseInstructions();
     if (!times.length) {
       showPageMessage("Add at least one dose time.", "error");
       return;
@@ -449,16 +559,15 @@ $("#form-medication")?.addEventListener("submit", async (e) => {
         name: body.name,
         dosage: body.dosage,
         frequency: body.frequency,
-        instructions: body.instructions,
+        dose_instructions: doseInstructions,
         scheduled_times: times,
       }),
     });
     e.target.reset();
-    $("#med-preset-select").value = "";
     $("#med-preset-list")?.querySelectorAll(".med-preset-chip").forEach((el) => {
       el.classList.remove("selected");
     });
-    setMedTimesCount(1, [], true);
+    setMedTimesCount(1, [], [], true);
     const meds = await apiRequest(`/medications/${patientId}`);
     renderMedications(meds || []);
     showPageMessage("Medication added.", "success");
@@ -477,6 +586,7 @@ $("#form-history")?.addEventListener("submit", async (e) => {
       body: JSON.stringify({ elder_id: patientId, ...body, is_active: true }),
     });
     e.target.reset();
+    clearHistoryFormSelection();
     const history = await apiRequest(`/medical-history/${patientId}`);
     renderHistory(history || []);
     showPageMessage("Medical history entry added.", "success");
@@ -496,6 +606,7 @@ $("#form-contact")?.addEventListener("submit", async (e) => {
       body: JSON.stringify({ elder_id: patientId, ...raw }),
     });
     e.target.reset();
+    clearContactFormSelection();
     const contacts = await apiRequest(`/contacts/${patientId}`);
     renderContacts(contacts || []);
     showPageMessage("Contact added.", "success");

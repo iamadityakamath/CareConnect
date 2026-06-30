@@ -10,6 +10,7 @@ from app.models.medication import (
     MedicationResponse,
     MedicationUpdate,
     PendingDoseResponse,
+    TodayDoseResponse,
 )
 from app.services import medication_service
 
@@ -24,6 +25,17 @@ def create_medication(
 ):
     return medication_service.create_medication(
         db, current_user["id"], body.model_dump()
+    )
+
+
+@router.get("/{elder_id}/today", response_model=list[TodayDoseResponse])
+def today_doses(
+    elder_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_db),
+):
+    return medication_service.get_today_doses(
+        db, elder_id, current_user["id"], current_user.get("role", "")
     )
 
 

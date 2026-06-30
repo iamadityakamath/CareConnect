@@ -657,6 +657,20 @@ select:focus {
   padding: 0 1.5rem 3rem;
 }
 
+.dash-main-dashboard {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1.5rem 3rem;
+}
+
+.cg-dash-date {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
 .dash-section-header {
   display: flex;
   justify-content: space-between;
@@ -1034,7 +1048,7 @@ select:focus {
 
 .home-skeleton-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
 }
 
@@ -1070,7 +1084,7 @@ select:focus {
 
 .home-overview {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.75rem;
 }
@@ -1579,9 +1593,39 @@ textarea {
 }
 
 .med-time-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.med-dose-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: minmax(120px, 140px) 1fr;
   gap: 0.65rem;
+  align-items: end;
+}
+
+.med-instruction-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.med-dose-instruction-input {
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+}
+
+@media (max-width: 560px) {
+  .med-dose-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .med-time-label {
@@ -1869,5 +1913,858 @@ textarea {
 
   .api-doc-links {
     width: 100%;
+  }
+}
+
+/* Patient home — simple, large, easy to read */
+.patient-body {
+  background: var(--sand);
+}
+
+.patient-app {
+  min-height: 100vh;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.patient-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+}
+
+.patient-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--teal-800);
+}
+
+.patient-main {
+  padding: 1.5rem 1.25rem 2.5rem;
+}
+
+.patient-greeting {
+  margin-bottom: 1.5rem;
+}
+
+.patient-date {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.patient-greeting h1 {
+  margin: 0 0 0.35rem;
+  font-size: 2rem;
+  line-height: 1.15;
+  color: var(--teal-900);
+}
+
+.patient-subtitle {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.patient-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.patient-summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 1rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.patient-summary-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--teal-800);
+}
+
+.patient-summary-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.patient-section-title {
+  margin: 0 0 0.85rem;
+  font-size: 1.2rem;
+  color: var(--teal-900);
+}
+
+.period-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.35rem 0;
+  background: var(--sand);
+}
+
+.period-nav-btn {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.75rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.period-nav-btn:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-800);
+}
+
+.period-nav-btn.active {
+  border-color: var(--teal-700);
+  background: var(--teal-50);
+  color: var(--teal-900);
+}
+
+.dose-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dose-period {
+  scroll-margin-top: 5.5rem;
+  padding: 1rem;
+  border-radius: calc(var(--radius) + 2px);
+  background: transparent;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.dose-period-active {
+  background: var(--white);
+  border: 2px solid var(--teal-200);
+  box-shadow: 0 8px 24px rgba(13, 79, 79, 0.08);
+}
+
+.dose-period-complete .dose-period-header {
+  opacity: 0.85;
+}
+
+.dose-period-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.dose-period-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dose-period-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.dose-period-title {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--teal-900);
+}
+
+.dose-period-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dose-period-badge {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: var(--teal-50);
+  color: var(--teal-800);
+}
+
+.dose-period-badge-done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dose-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.dose-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+}
+
+.dose-card-pending {
+  border-color: var(--teal-100);
+}
+
+.dose-card-taken {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.dose-time {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--teal-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dose-name {
+  margin: 0 0 0.2rem;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.dose-dosage {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dose-instructions {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.dose-overdue {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.dose-take-btn {
+  width: 100%;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 1rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--teal-700);
+  color: var(--white);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.dose-take-btn:hover:not(:disabled) {
+  background: var(--teal-800);
+}
+
+.dose-take-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.dose-take-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.dose-taken-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dose-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #15803d;
+  color: var(--white);
+  font-size: 0.9rem;
+}
+
+.patient-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  background: var(--white);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.patient-empty-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.patient-empty-desc {
+  margin: 0;
+  color: var(--muted);
+}
+
+.patient-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 2rem));
+  z-index: 20;
+  box-shadow: var(--shadow);
+}
+
+/* Mindfulness / breathing */
+.mindfulness-card {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  background: linear-gradient(135deg, #eef8f8 0%, #f5f0fa 100%);
+  border: 1px solid #cfe9e9;
+  border-radius: var(--radius);
+}
+
+.mindfulness-card-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mindfulness-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  color: var(--teal-900);
+}
+
+.mindfulness-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+.mindfulness-start-btn {
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  background: #6b5b95;
+  color: var(--white);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.mindfulness-start-btn:hover {
+  background: #584a7d;
+}
+
+.mindfulness-start-btn:active {
+  transform: scale(0.98);
+}
+
+.breathing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(13, 79, 79, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.breathing-screen {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 1.75rem 1.5rem 1.5rem;
+  background: var(--white);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.breathing-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.breathing-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  color: var(--teal-900);
+}
+
+.breathing-subtitle {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.breathing-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  margin-bottom: 1.25rem;
+}
+
+.breathing-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #a8e6e6, var(--teal-600));
+  box-shadow: 0 12px 40px rgba(21, 153, 153, 0.35);
+  transform: scale(1);
+  transition: transform 4s ease-in-out;
+}
+
+.breathing-circle-inhale {
+  transform: scale(1.35);
+}
+
+.breathing-circle-exhale {
+  transform: scale(0.82);
+  transition-duration: 6s;
+}
+
+.breathing-circle-idle {
+  transform: scale(1);
+  transition-duration: 0.6s;
+}
+
+.breathing-phase {
+  margin: 0 0 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--teal-800);
+  min-height: 2.2rem;
+}
+
+.breathing-counter {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  min-height: 1.25rem;
+}
+
+.breathing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.breathing-action-btn {
+  width: 100%;
+}
+
+/* Caregiver adherence dashboard */
+.cg-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.cg-skeleton-chart {
+  height: 160px;
+  margin-top: 0.75rem;
+}
+
+.cg-dash-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cg-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 0.85rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 108px;
+}
+
+.cg-stat-card-primary {
+  border-color: var(--teal-200);
+  background: linear-gradient(180deg, var(--teal-50) 0%, var(--white) 100%);
+}
+
+.cg-stat-card-warn .cg-stat-value {
+  color: #b45309;
+}
+
+.cg-stat-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--teal-800);
+}
+
+.cg-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cg-stat-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: auto;
+  line-height: 1.35;
+}
+
+.cg-dash-panel {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.adherence-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 140px;
+  padding-top: 0.5rem;
+}
+
+.adherence-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.adherence-chart-bars {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 48px;
+  height: 100px;
+  gap: 2px;
+}
+
+.adherence-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+}
+
+.adherence-bar-taken {
+  background: #22c55e;
+}
+
+.adherence-bar-missed {
+  background: #f87171;
+}
+
+.adherence-chart-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.adherence-chart-meta {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.cg-chart-empty {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cg-attention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cg-attention-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-left: 3px solid #f59e0b;
+  border-radius: 10px;
+}
+
+.cg-attention-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.88rem;
+}
+
+.cg-attention-main strong {
+  font-size: 0.95rem;
+}
+
+.cg-attention-time {
+  color: #b45309;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.cg-patient-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.cg-patient-card {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--sand);
+}
+
+.cg-patient-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.cg-patient-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cg-patient-identity h4 {
+  margin: 0 0 0.15rem;
+  font-size: 1.05rem;
+}
+
+.cg-patient-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.cg-status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.cg-status-overdue { background: #fee2e2; color: #b91c1c; }
+.cg-status-progress { background: #dbeafe; color: #1d4ed8; }
+.cg-status-upcoming { background: var(--teal-50); color: var(--teal-800); }
+.cg-status-complete { background: #dcfce7; color: #15803d; }
+.cg-status-none { background: #f3f4f6; color: #6b7280; }
+
+.cg-patient-progress {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.cg-progress-ring {
+  --pct: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(var(--teal-600) calc(var(--pct) * 1%), #e5e7eb 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cg-progress-ring::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--white);
+}
+
+.cg-progress-value {
+  position: relative;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--teal-800);
+}
+
+.cg-progress-title {
+  margin: 0 0 0.2rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.cg-progress-sub,
+.cg-progress-week {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.cg-patient-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.cg-metric {
+  text-align: center;
+  padding: 0.55rem 0.35rem;
+  border-radius: 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
+}
+
+.cg-metric-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.cg-metric-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.cg-metric-ok .cg-metric-value { color: #15803d; }
+.cg-metric-pending .cg-metric-value { color: #1d4ed8; }
+.cg-metric-warn .cg-metric-value { color: #b45309; }
+
+.cg-patient-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (max-width: 860px) {
+  .cg-dash-overview,
+  .cg-skeleton-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cg-patient-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cg-patient-progress {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .cg-dash-overview,
+  .cg-skeleton-grid {
+    grid-template-columns: 1fr;
   }
 }

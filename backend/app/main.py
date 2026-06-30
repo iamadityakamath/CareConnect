@@ -2,7 +2,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from starlette.staticfiles import StaticFiles
+from starlette.responses import Response
 
 from app.exceptions import register_exception_handlers
 from app.routers import (
@@ -46,10 +47,25 @@ def health_check():
     return {"status": "ok"}
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """Serve sample UI assets without aggressive browser caching during development."""
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if isinstance(response, Response) and response.status_code == 200:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+
 _test_ui_dir = Path(__file__).resolve().parents[1] / "test-ui"
 if _test_ui_dir.is_dir():
     app.mount("/test-ui", StaticFiles(directory=str(_test_ui_dir), html=True), name="test-ui")
 
 _sample_web_dir = Path(__file__).resolve().parents[1] / "sample-webpage"
 if _sample_web_dir.is_dir():
-    app.mount("/sample-webpage", StaticFiles(directory=str(_sample_web_dir), html=True), name="sample-webpage")
+    app.mount(
+        "/sample-webpage",
+        NoCacheStaticFiles(directory=str(_sample_web_dir), html=True),
+        name="sample-webpage",
+    )

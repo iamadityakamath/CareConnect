@@ -8,6 +8,7 @@ class MedicationCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     dosage: str = Field(..., min_length=1, max_length=100)
     instructions: str | None = None
+    dose_instructions: list[str | None] | None = None
     frequency: str = Field(..., min_length=1, max_length=100)
     scheduled_times: list[str] = Field(..., min_length=1)
 
@@ -16,6 +17,7 @@ class MedicationUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=200)
     dosage: str | None = Field(None, min_length=1, max_length=100)
     instructions: str | None = None
+    dose_instructions: list[str | None] | None = None
     frequency: str | None = Field(None, min_length=1, max_length=100)
     scheduled_times: list[str] | None = None
     active: bool | None = None
@@ -27,6 +29,7 @@ class MedicationResponse(BaseModel):
     name: str
     dosage: str
     instructions: str | None = None
+    dose_instructions: list[str | None] = Field(default_factory=list)
     frequency: str
     scheduled_times: list[str]
     active: bool
@@ -55,6 +58,11 @@ class PendingDoseResponse(BaseModel):
     scheduled_for: str
     status: MedicationLogStatus
     minutes_overdue: int
+
+
+class TodayDoseResponse(PendingDoseResponse):
+    instructions: str | None = None
+    taken_at: str | None = None
 
 
 class DailyAdherenceBreakdown(BaseModel):
