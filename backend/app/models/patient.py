@@ -1,5 +1,7 @@
 import re
 
+from datetime import date
+
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.user import UserResponse
@@ -13,6 +15,9 @@ class PatientProvisionCreate(BaseModel):
     login_code: str = Field(..., description="4–6 digit numeric code the patient will use to sign in")
     phone: str | None = Field(None, max_length=30)
     timezone: str | None = Field(None, min_length=1, max_length=64)
+    date_of_birth: date | None = None
+    address: str | None = Field(None, max_length=500)
+    notes: str | None = Field(None, max_length=2000)
 
     @field_validator("login_code")
     @classmethod
@@ -30,6 +35,10 @@ class PatientProvisionCreate(BaseModel):
 class PatientProvisionResponse(BaseModel):
     patient: UserResponse
     relationship_id: str
+
+
+class PatientDetailResponse(UserResponse):
+    login_code: str | None = None
 
 
 class PatientLoginRequest(BaseModel):

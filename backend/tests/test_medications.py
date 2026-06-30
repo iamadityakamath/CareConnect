@@ -61,6 +61,11 @@ def test_list_medications_service(mock_db, monkeypatch):
         "verify_elder_access",
         lambda db, requester_id, elder_id, requester_role: None,
     )
+    monkeypatch.setattr(
+        medication_service,
+        "medications_use_patient_id",
+        lambda db: False,
+    )
 
     result = medication_service.list_medications(
         mock_db, "elder-1", "caregiver-1", "caregiver"

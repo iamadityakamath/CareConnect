@@ -20,7 +20,11 @@ CREATE TABLE users (
     timezone TEXT DEFAULT 'America/Chicago',
     account_status TEXT NOT NULL DEFAULT 'active'
         CHECK (account_status IN ('managed', 'active')),
+    login_code TEXT,
     login_code_set_at TIMESTAMPTZ,
+    date_of_birth DATE,
+    address TEXT,
+    notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

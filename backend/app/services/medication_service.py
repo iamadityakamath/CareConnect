@@ -4,21 +4,80 @@ from supabase import Client
 
 from app.db_utils import first_row
 from app.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.pillbox_compat import (
+    attach_pillbox_schedules,
+    create_pillbox_schedule,
+    ensure_pillbox_patient,
+    medications_use_patient_id,
+    normalize_medication_row,
+)
 from app.services.user_service import verify_caregiver_for_elder, verify_elder_access
 
 
 def create_medication(db: Client, caregiver_id: str, data: dict) -> dict:
     """Add a medication schedule for an elder (caregiver only)."""
-    verify_caregiver_for_elder(db, caregiver_id, data["elder_id"])
+    elder_id = data["elder_id"]
+    verify_caregiver_for_elder(db, caregiver_id, elder_id)
+
+    scheduled_times = data.get("scheduled_times") or ["08:00"]
+    frequency = data.get("frequency") or "Daily"
+
+    if medications_use_patient_id(db):
+        elder = first_row(
+            db.table("users").select("full_name, timezone").eq("id", elder_id).limit(1).execute()
+        ) or {}
+        ensure_pillbox_patient(
+            db,
+            caregiver_id,
+            elder_id,
+            elder.get("full_name") or data.get("name") or "Patient",
+        )
+
+        result = db.table("medications").insert(
+            {
+                "patient_id": elder_id,
+                "name": data["name"],
+                "dosage_text": data["dosage"],
+                "form": "pill",
+                "instructions": data.get("instructions"),
+                "active": True,
+                "created_by": caregiver_id,
+            }
+        ).execute()
+        if not result.data:
+            raise ValidationError("Failed to create medication")
+
+        med = result.data[0]
+        create_pillbox_schedule(
+            db,
+            med["id"],
+            scheduled_times,
+            frequency,
+            elder.get("timezone") or "America/Chicago",
+        )
+        return normalize_medication_row(med, data)
+
     result = db.table("medications").insert(data).execute()
     if not result.data:
         raise ValidationError("Failed to create medication")
-    return result.data[0]
+    return normalize_medication_row(result.data[0], data)
 
 
 def list_medications(db: Client, elder_id: str, requester_id: str, requester_role: str) -> list[dict]:
     """List active medications for an elder."""
     verify_elder_access(db, requester_id, elder_id, requester_role)
+
+    if medications_use_patient_id(db):
+        result = (
+            db.table("medications")
+            .select("*")
+            .eq("patient_id", elder_id)
+            .eq("active", True)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return attach_pillbox_schedules(db, result.data or [])
+
     result = (
         db.table("medications")
         .select("*")
@@ -27,7 +86,7 @@ def list_medications(db: Client, elder_id: str, requester_id: str, requester_rol
         .order("created_at", desc=True)
         .execute()
     )
-    return result.data or []
+    return [normalize_medication_row(row) for row in (result.data or [])]
 
 
 def update_medication(db: Client, medication_id: str, caregiver_id: str, updates: dict) -> dict:
@@ -255,7 +314,7 @@ def _get_medication(db: Client, medication_id: str) -> dict:
     )
     if not med:
         raise NotFoundError("Medication not found")
-    return med
+    return normalize_medication_row(med)
 
 
 def _parse_time(time_str: str) -> tuple[int, int]:

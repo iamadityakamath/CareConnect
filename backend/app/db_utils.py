@@ -17,4 +17,11 @@ def first_row(result: Any) -> dict | None:
 
 def public_user(profile: dict) -> dict:
     """Remove internal fields before returning user data to API clients."""
-    return {k: v for k, v in profile.items() if k != "auth_email"}
+    safe = {
+        k: v
+        for k, v in profile.items()
+        if k not in ("auth_email", "login_code")
+    }
+    if safe.get("date_of_birth"):
+        safe["date_of_birth"] = str(safe["date_of_birth"])[:10]
+    return safe

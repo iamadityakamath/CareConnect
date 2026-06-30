@@ -1,157 +1,190 @@
-const SESSION_KEY = "careconnect_session";
+const PROFILE_FIELDS = [
+  { key: "date_of_birth", label: "Date of birth" },
+  { key: "address", label: "Address" },
+  { key: "phone", label: "Phone" },
+  { key: "notes", label: "Care notes" },
+];
 
-const $ = (sel) => document.querySelector(sel);
-
-function getApiBase() {
-  const { origin, pathname } = window.location;
-  if (origin.startsWith("http") && pathname.includes("/sample-webpage")) {
-    return origin;
-  }
-  return "http://localhost:8000";
-}
-
-function getSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
+function setHomeLoading(isLoading) {
+  $("#home-loading")?.classList.toggle("hidden", !isLoading);
+  $("#home-content")?.classList.toggle("hidden", isLoading);
+  const loadingEl = $("#home-loading");
+  if (loadingEl) {
+    loadingEl.setAttribute("aria-busy", isLoading ? "true" : "false");
   }
 }
 
-function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str ?? "";
-  return div.innerHTML;
-}
-
-function generateLoginCode() {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
-
-function formToObject(form) {
-  const data = Object.fromEntries(new FormData(form).entries());
-  Object.keys(data).forEach((k) => {
-    if (data[k] === "") delete data[k];
-  });
-  return data;
-}
-
-function showFormMessage(text, type) {
-  const el = $("#dash-form-message");
-  el.textContent = text;
-  el.className = `message visible ${type}`;
-}
-
-function clearFormMessage() {
-  const el = $("#dash-form-message");
-  el.textContent = "";
-  el.className = "message";
-}
-
-async function apiRequest(path, options = {}) {
-  const session = getSession();
-  if (!session?.access_token) {
-    window.location.href = "index.html";
-    return null;
+function formatCheckin(lastCheckinAt) {
+  if (!lastCheckinAt) {
+    return { label: "No check-in yet", className: "stat-warn" };
   }
-
-  const headers = { ...(options.headers || {}) };
-  if (!headers["Content-Type"] && options.body) {
-    headers["Content-Type"] = "application/json";
-  }
-  headers.Authorization = `Bearer ${session.access_token}`;
-
-  const res = await fetch(`${getApiBase()}${path}`, { ...options, headers });
-
-  if (res.status === 401) {
-    clearSession();
-    window.location.href = "index.html";
-    return null;
-  }
-
-  const text = await res.text();
-  let body;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = text;
-  }
-
-  if (!res.ok) {
-    const detail = body?.detail;
-    const msg =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d) => d.msg).join("; ")
-          : "Something went wrong.";
-    throw new Error(msg);
-  }
-  return body;
+  return { label: "Checked in recently", className: "stat-ok" };
 }
 
-function renderPatientDashboard(user) {
-  $("#patient-view").classList.remove("hidden");
-  $("#user-card").innerHTML = `
-    <p class="name">${escapeHtml(user.full_name || "Patient")}</p>
-    <p class="meta">Last name: ${escapeHtml(user.last_name || "—")}</p>
-    <span class="role-badge">Patient</span>
-  `;
+function getMissingProfileFields(patient) {
+  return PROFILE_FIELDS.filter((field) => !patient[field.key]?.toString().trim());
 }
 
-function renderPatientsList(elders) {
-  const list = $("#patients-list");
-  const empty = $("#patients-empty");
-  const formTitle = $("#dash-form-title");
+function needsAttention(patient) {
+  const missing = getMissingProfileFields(patient);
+  const noMeds = (patient.active_medication_count ?? 0) === 0;
+  const noCheckin = !patient.last_checkin_at;
+  return missing.length > 0 || noMeds || noCheckin;
+}
 
-  if (!elders.length) {
-    empty.classList.remove("hidden");
+function patientDetailUrl(patientId, section) {
+  const base = `patient-detail.html?id=${encodeURIComponent(patientId)}`;
+  return section ? `${base}#${section}` : base;
+}
+
+function renderOverviewStats(elders) {
+  const totalMeds = elders.reduce((sum, p) => sum + (p.active_medication_count ?? 0), 0);
+  const attention = elders.filter(needsAttention).length;
+
+  const patientsEl = $("#stat-patients");
+  const medsEl = $("#stat-meds");
+  const attentionEl = $("#stat-attention");
+
+  if (patientsEl) patientsEl.textContent = String(elders.length);
+  if (medsEl) medsEl.textContent = String(totalMeds);
+  if (attentionEl) attentionEl.textContent = String(attention);
+}
+
+function renderCompleteProfilesSection(elders) {
+  const section = $("#home-complete-section");
+  const list = $("#home-complete-list");
+  if (!section || !list) return;
+
+  const incomplete = elders
+    .map((patient) => ({
+      patient,
+      missing: getMissingProfileFields(patient),
+      noMeds: (patient.active_medication_count ?? 0) === 0,
+    }))
+    .filter(({ missing, noMeds }) => missing.length > 0 || noMeds);
+
+  if (!incomplete.length) {
+    section.classList.add("hidden");
     list.innerHTML = "";
-    if (formTitle) formTitle.textContent = "Add a patient";
     return;
   }
 
-  empty.classList.add("hidden");
-  if (formTitle) formTitle.textContent = "Add another patient";
+  section.classList.remove("hidden");
+  list.innerHTML = incomplete
+    .map(({ patient, missing, noMeds }) => {
+      const gaps = [
+        ...missing.map((field) => field.label),
+        ...(noMeds ? ["Medications"] : []),
+      ];
+      const pct = Math.round(
+        ((PROFILE_FIELDS.length + 1 - gaps.length) / (PROFILE_FIELDS.length + 1)) * 100
+      );
+
+      return `
+        <li class="home-complete-item">
+          <div class="home-complete-main">
+            <strong>${escapeHtml(patient.full_name || "Patient")}</strong>
+            <span class="home-complete-gap">Missing: ${escapeHtml(gaps.join(", "))}</span>
+            <div class="home-complete-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+              <span class="home-complete-bar-fill" style="width: ${pct}%"></span>
+            </div>
+          </div>
+          <div class="home-complete-actions">
+            <a href="${patientDetailUrl(patient.elder_id, "profile")}" class="btn-secondary btn-sm">Edit profile</a>
+            ${noMeds ? `<a href="${patientDetailUrl(patient.elder_id, "medications")}" class="btn-secondary btn-sm">Add meds</a>` : ""}
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function renderHomePatientList(elders) {
+  const list = $("#patients-home-list");
+  const empty = $("#patients-empty");
+
+  renderOverviewStats(elders);
+  renderCompleteProfilesSection(elders);
+
+  const medsAction = $("#home-action-meds");
+  if (medsAction && elders.length) {
+    medsAction.href = patientDetailUrl(elders[0].elder_id, "medications");
+  }
+
+  if (!elders.length) {
+    empty?.classList.remove("hidden");
+    if (list) list.innerHTML = "";
+    return;
+  }
+
+  empty?.classList.add("hidden");
+  if (!list) return;
 
   list.innerHTML = elders
-    .map(
-      (p) => `
-    <article class="patient-card">
-      <div class="patient-card-main">
-        <h3>${escapeHtml(p.full_name || "Patient")}</h3>
-        <p class="patient-meta">
-          Last name: <strong>${escapeHtml(p.last_name || "—")}</strong>
-        </p>
+    .map((p) => {
+      const checkin = formatCheckin(p.last_checkin_at);
+      const missing = getMissingProfileFields(p);
+      const detailUrl = patientDetailUrl(p.elder_id);
+
+      return `
+    <li class="patient-home-card">
+      <a href="${detailUrl}" class="patient-home-link-main">
+        <div class="patient-home-avatar" aria-hidden="true">${escapeHtml((p.full_name || "P").charAt(0).toUpperCase())}</div>
+        <div class="patient-home-info">
+          <strong>${escapeHtml(p.full_name || "Patient")}</strong>
+          <span class="patient-home-meta">
+            Last name: ${escapeHtml(p.last_name || "—")}
+            · Code: <code class="inline-code">${escapeHtml(p.login_code || "—")}</code>
+          </span>
+          ${
+            missing.length
+              ? `<span class="patient-home-missing">${escapeHtml(missing.map((f) => f.label).join(" · "))} not set</span>`
+              : `<span class="patient-home-complete">Profile complete</span>`
+          }
+        </div>
+      </a>
+      <div class="patient-home-side">
+        <div class="patient-home-badges">
+          <span class="stat">${p.active_medication_count ?? 0} meds</span>
+          <span class="stat ${checkin.className}">${checkin.label}</span>
+        </div>
+        <div class="patient-home-quick">
+          <a href="${patientDetailUrl(p.elder_id, "profile")}" class="patient-home-quick-link">Profile</a>
+          <a href="${patientDetailUrl(p.elder_id, "medications")}" class="patient-home-quick-link">Meds</a>
+          <a href="${detailUrl}" class="patient-home-quick-link patient-home-quick-link-primary">Details</a>
+        </div>
       </div>
-      <div class="patient-stats">
-        <span class="stat">${p.active_medication_count ?? 0} meds</span>
-        <span class="stat ${p.last_checkin_at ? "stat-ok" : "stat-warn"}">
-          ${p.last_checkin_at ? "Checked in recently" : "No check-in yet"}
-        </span>
-      </div>
-    </article>
-  `
-    )
+    </li>
+  `;
+    })
     .join("");
+}
+
+async function enrichPatientDetails(elders) {
+  const results = await Promise.allSettled(
+    elders.map(async (elder) => {
+      const detail = await apiRequest(`/patients/${elder.elder_id}`);
+      return detail ? { ...elder, ...detail, elder_id: elder.elder_id } : elder;
+    })
+  );
+
+  return results.map((result, index) =>
+    result.status === "fulfilled" ? result.value : elders[index]
+  );
 }
 
 async function loadPatients() {
   const elders = await apiRequest("/relationships/my-elders");
-  if (!elders) return;
-  renderPatientsList(elders);
-  return elders;
-}
+  if (!elders) return [];
 
-function resetProvisionForm() {
-  const form = $("#form-provision-patient");
-  form.reset();
-  $("#dash-login-code").value = generateLoginCode();
-  form.querySelector('[name="full_name"]')?.focus();
+  if (!elders.length) {
+    renderHomePatientList([]);
+    return [];
+  }
+
+  const enriched = await enrichPatientDetails(elders);
+  renderHomePatientList(enriched);
+  return enriched;
 }
 
 async function init() {
@@ -161,66 +194,27 @@ async function init() {
     return;
   }
 
-  const user = session.user;
-  const isCaregiver = user.role === "caregiver";
-
-  $("#btn-scroll-add").classList.toggle("hidden", !isCaregiver);
-
-  if (!isCaregiver) {
-    renderPatientDashboard(user);
+  if (session.user.role !== "caregiver") {
+    bindLogout();
+    renderPatientDashboard(session.user);
     return;
   }
 
-  $("#caregiver-view").classList.remove("hidden");
-  $("#dash-login-code").value = generateLoginCode();
+  initCaregiverShell();
+  $("#caregiver-view")?.classList.remove("hidden");
+  setHomeLoading(true);
 
   try {
     await loadPatients();
   } catch (err) {
     const msg = $("#dash-message");
-    msg.textContent = err.message;
-    msg.className = "message visible error";
+    if (msg) {
+      msg.textContent = err.message;
+      msg.className = "message visible error";
+    }
+  } finally {
+    setHomeLoading(false);
   }
 }
-
-$("#btn-generate-code").addEventListener("click", () => {
-  $("#dash-login-code").value = generateLoginCode();
-});
-
-$("#form-provision-patient").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearFormMessage();
-  const btn = $("#btn-submit-patient");
-  btn.disabled = true;
-
-  try {
-    const body = formToObject(e.target);
-    await apiRequest("/patients/provision", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-
-    await loadPatients();
-    showFormMessage(
-      `${body.full_name} added. Share last name "${body.last_name}" and code "${body.login_code}" with them.`,
-      "success"
-    );
-    resetProvisionForm();
-  } catch (err) {
-    showFormMessage(err.message, "error");
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-$("#btn-scroll-add").addEventListener("click", () => {
-  $("#add-patient-section").scrollIntoView({ behavior: "smooth" });
-  $("#form-provision-patient").querySelector('[name="full_name"]')?.focus();
-});
-
-$("#btn-logout").addEventListener("click", () => {
-  clearSession();
-  window.location.href = "index.html";
-});
 
 init();

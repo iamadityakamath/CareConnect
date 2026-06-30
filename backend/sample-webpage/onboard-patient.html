@@ -67,6 +67,22 @@
               <input type="tel" name="phone" autocomplete="tel" placeholder="555-0200" />
             </label>
 
+            <div class="field-row">
+              <label>
+                Date of birth <span class="optional">(optional)</span>
+                <input type="date" name="date_of_birth" />
+              </label>
+              <label>
+                Address <span class="optional">(optional)</span>
+                <input type="text" name="address" placeholder="123 Main St, Chicago" />
+              </label>
+            </div>
+
+            <label>
+              Care notes <span class="optional">(optional)</span>
+              <textarea name="notes" rows="2" placeholder="Mobility needs, allergies to note, etc."></textarea>
+            </label>
+
             <label>
               Timezone <span class="optional">(optional)</span>
               <select name="timezone" id="timezone-select">
@@ -96,7 +112,8 @@
         <div id="message" class="message" role="status" aria-live="polite"></div>
 
         <div class="onboard-footer-actions">
-          <button type="button" class="submit-btn btn-outline" id="btn-go-dashboard">Continue to dashboard</button>
+          <button type="button" class="submit-btn btn-outline" id="btn-go-dashboard">Go to home</button>
+          <a href="patients.html" class="text-link">View patient details</a>
           <button type="button" class="text-link" id="btn-skip">Skip for now</button>
         </div>
       </div>

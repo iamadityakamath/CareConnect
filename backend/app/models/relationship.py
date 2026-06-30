@@ -22,6 +22,7 @@ class ElderSummary(BaseModel):
     full_name: str | None = None
     last_name: str | None = None
     email: str | None = None
+    login_code: str | None = None
     relationship_id: str
     status: RelationshipStatus
     last_checkin_at: str | None = None

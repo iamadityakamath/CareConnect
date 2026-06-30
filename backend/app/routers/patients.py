@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends
 from supabase import Client
 
 from app.dependencies import get_current_user, get_db, require_caregiver
-from app.models.patient import PatientProvisionCreate, PatientProvisionResponse
+from datetime import date
+
+from app.models.patient import PatientDetailResponse, PatientProvisionCreate, PatientProvisionResponse
 from app.models.user import PatientLoginCodeUpdate, UserResponse
-from app.services import auth_service
+from app.services import auth_service, user_service
 
 router = APIRouter()
 
@@ -24,11 +26,24 @@ def provision_patient(
         login_code=body.login_code,
         phone=body.phone,
         timezone=body.timezone,
+        date_of_birth=body.date_of_birth.isoformat() if body.date_of_birth else None,
+        address=body.address,
+        notes=body.notes,
     )
     return {
         "patient": result["patient"],
         "relationship_id": result["relationship_id"],
     }
+
+
+@router.get("/{patient_id}", response_model=PatientDetailResponse)
+def get_patient(
+    patient_id: str,
+    current_user: dict = Depends(require_caregiver),
+    db: Client = Depends(get_db),
+):
+    """Get a linked patient's full profile for the caregiver dashboard."""
+    return user_service.get_patient_detail(db, current_user["id"], patient_id)
 
 
 @router.patch("/{patient_id}/login-code", response_model=UserResponse)

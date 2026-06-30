@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — API reference</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="dashboard" class="dashboard">
+    <header class="dash-header">
+      <div class="dash-brand">
+        <span class="logo-mark small" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/><path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+        </span>
+        <span>CareConnect</span>
+      </div>
+      <div class="dash-actions">
+        <a href="index.html" class="logout-btn api-back-link">Sign in</a>
+      </div>
+    </header>
+
+    <nav class="dash-nav" aria-label="Site navigation">
+      <a href="dashboard.html" class="dash-nav-link">Home</a>
+      <a href="patients.html" class="dash-nav-link">View patients</a>
+      <a href="onboard-patient.html" class="dash-nav-link">Add patient</a>
+      <a href="apis.html" class="dash-nav-link active" aria-current="page">APIs</a>
+    </nav>
+
+    <main class="dash-main dash-main-wide">
+      <header class="dash-section-header">
+        <div>
+          <p class="eyebrow">Developer reference</p>
+          <h2 id="api-title">API routes</h2>
+          <p class="dash-subtitle">
+            All registered FastAPI routers and endpoints.
+            <span id="api-meta" class="api-meta"></span>
+          </p>
+        </div>
+        <div class="api-doc-links">
+          <a id="link-swagger" href="/docs" target="_blank" rel="noopener" class="home-action-card api-doc-link">
+            <span class="home-action-title">Swagger UI</span>
+            <span class="home-action-desc">Try endpoints interactively</span>
+          </a>
+          <a id="link-redoc" href="/redoc" target="_blank" rel="noopener" class="home-action-card api-doc-link">
+            <span class="home-action-title">ReDoc</span>
+            <span class="home-action-desc">Readable API docs</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="api-toolbar">
+        <label class="api-search-label">
+          <span class="sr-only">Filter routes</span>
+          <input type="search" id="api-search" class="api-search" placeholder="Filter by path, method, or tag…" autocomplete="off" />
+        </label>
+        <p id="api-count" class="api-count"></p>
+      </div>
+
+      <p id="api-error" class="form-error hidden" role="alert"></p>
+      <div id="api-groups" class="api-groups"></div>
+    </main>
+  </div>
+
+  <script src="common.js"></script>
+  <script src="apis.js"></script>
+</body>
+</html>

@@ -1,9 +1,13 @@
+from datetime import date
+
 from supabase import Client
 
 from app.db_utils import first_row, public_user
 from app.exceptions import ForbiddenError, NotFoundError, ValidationError
 
-ALLOWED_PROFILE_UPDATES = frozenset({"full_name", "last_name", "phone", "timezone"})
+ALLOWED_PROFILE_UPDATES = frozenset({
+    "full_name", "last_name", "phone", "timezone", "date_of_birth", "address", "notes",
+})
 
 
 def _get_user_profile(db: Client, user_id: str) -> dict:
@@ -73,9 +77,17 @@ def get_user_profile(db: Client, user_id: str, requester_id: str) -> dict:
 def update_user_profile(
     db: Client, user_id: str, requester_id: str, updates: dict
 ) -> dict:
-    """Update profile fields for self only."""
+    """Update profile fields for self, or for a linked patient when requester is their caregiver."""
     if user_id != requester_id:
-        raise ForbiddenError("Can only update your own profile")
+        target = first_row(
+            db.table("users").select("role").eq("id", user_id).limit(1).execute()
+        )
+        if not target:
+            raise NotFoundError("User not found")
+        if target.get("role") == "elder":
+            verify_caregiver_for_elder(db, requester_id, user_id)
+        else:
+            raise ForbiddenError("Can only update your own profile")
 
     filtered = {
         k: v for k, v in updates.items()
@@ -86,6 +98,10 @@ def update_user_profile(
 
     if "last_name" in filtered:
         filtered["last_name"] = filtered["last_name"].strip()
+
+    if "date_of_birth" in filtered and filtered["date_of_birth"] is not None:
+        dob = filtered["date_of_birth"]
+        filtered["date_of_birth"] = dob.isoformat() if isinstance(dob, date) else str(dob)[:10]
 
     result = (
         db.table("users")
@@ -265,6 +281,28 @@ def _last_checkin_at(db: Client, elder_id: str) -> str | None:
         return None
 
 
+def get_patient_detail(db: Client, caregiver_id: str, patient_id: str) -> dict:
+    """Return full patient profile for a linked caregiver, including login code."""
+    verify_caregiver_for_elder(db, caregiver_id, patient_id)
+
+    profile = first_row(
+        db.table("users")
+        .select("*")
+        .eq("id", patient_id)
+        .eq("role", "elder")
+        .limit(1)
+        .execute()
+    )
+    if not profile:
+        raise NotFoundError("Patient not found")
+
+    safe = public_user(profile)
+    safe["login_code"] = profile.get("login_code")
+    if profile.get("date_of_birth"):
+        safe["date_of_birth"] = str(profile["date_of_birth"])[:10]
+    return safe
+
+
 def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
     """List linked elders with last check-in and active medication counts."""
     rels = (
@@ -278,7 +316,7 @@ def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
     for rel in rels.data or []:
         elder = first_row(
             db.table("users")
-            .select("full_name, last_name, email, timezone")
+            .select("full_name, last_name, email, timezone, login_code")
             .eq("id", rel["elder_id"])
             .limit(1)
             .execute()
@@ -288,6 +326,7 @@ def get_my_elders(db: Client, caregiver_id: str) -> list[dict]:
             "full_name": elder.get("full_name"),
             "last_name": elder.get("last_name"),
             "email": elder.get("email"),
+            "login_code": elder.get("login_code"),
             "relationship_id": rel["id"],
             "status": rel["status"],
             "last_checkin_at": _last_checkin_at(db, rel["elder_id"]),

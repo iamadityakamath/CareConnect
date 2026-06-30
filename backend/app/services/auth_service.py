@@ -6,6 +6,7 @@ from supabase import Client, create_client
 from app.config import get_settings
 from app.db_utils import first_row, public_user
 from app.exceptions import ForbiddenError, UnauthorizedError, ValidationError
+from app.pillbox_compat import ensure_pillbox_patient
 
 
 def _patient_auth_email(user_id: str) -> str:
@@ -142,6 +143,9 @@ def provision_patient(
     login_code: str,
     phone: str | None,
     timezone: str | None = None,
+    date_of_birth: str | None = None,
+    address: str | None = None,
+    notes: str | None = None,
 ) -> dict:
     """Create a patient auth account, profile, and active caregiver link."""
     temp_email = f"pending.{uuid.uuid4()}@{get_settings().PATIENT_AUTH_EMAIL_DOMAIN}"
@@ -181,10 +185,17 @@ def provision_patient(
         "role": "elder",
         "phone": phone,
         "account_status": "managed",
+        "login_code": login_code,
         "login_code_set_at": now,
     }
     if timezone:
         profile_payload["timezone"] = timezone
+    if date_of_birth:
+        profile_payload["date_of_birth"] = date_of_birth
+    if address:
+        profile_payload["address"] = address.strip()
+    if notes:
+        profile_payload["notes"] = notes.strip()
 
     profile_result = db.table("users").insert(profile_payload).execute()
     if not profile_result.data:
@@ -207,6 +218,8 @@ def provision_patient(
         db.table("users").delete().eq("id", user_id).execute()
         db.auth.admin.delete_user(user_id)
         raise ValidationError("Failed to link patient to caregiver")
+
+    ensure_pillbox_patient(db, caregiver_id, user_id, full_name)
 
     return {
         "patient": public_user(profile_result.data[0]),
@@ -288,7 +301,10 @@ def update_patient_login_code(
 
     result = (
         db.table("users")
-        .update({"login_code_set_at": datetime.now(dt_timezone.utc).isoformat()})
+        .update({
+            "login_code": login_code,
+            "login_code_set_at": datetime.now(dt_timezone.utc).isoformat(),
+        })
         .eq("id", patient_id)
         .execute()
     )

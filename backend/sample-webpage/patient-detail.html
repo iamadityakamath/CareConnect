@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — Patient details</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <header class="dash-header">
+      <div class="dash-brand">
+        <span class="logo-mark small" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/><path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+        </span>
+        <span>CareConnect</span>
+      </div>
+      <div class="dash-actions">
+        <button type="button" id="btn-logout" class="logout-btn">Log out</button>
+      </div>
+    </header>
+
+    <nav class="dash-nav" aria-label="Caregiver navigation">
+      <a href="dashboard.html" class="dash-nav-link">Home</a>
+      <a href="patients.html" class="dash-nav-link">View patients</a>
+      <a href="onboard-patient.html" class="dash-nav-link">Add patient</a>
+      <a href="apis.html" class="dash-nav-link">APIs</a>
+    </nav>
+
+    <main class="dash-main dash-main-wide">
+      <header class="detail-header">
+        <a href="dashboard.html" class="back-link">← Back to home</a>
+        <div id="patient-header" class="patient-header-card">
+          <div class="patient-header-main">
+            <h2 id="patient-name">Patient</h2>
+            <p id="patient-subtitle" class="dash-subtitle"></p>
+          </div>
+          <div id="patient-badges" class="patient-badges"></div>
+        </div>
+      </header>
+
+      <div id="page-message" class="message" role="status"></div>
+
+      <!-- Profile -->
+      <section id="section-profile" class="detail-section">
+        <div class="section-label-row">
+          <h3 class="section-label">Profile & login</h3>
+          <button type="button" class="btn-secondary btn-sm" id="btn-edit-profile">Edit</button>
+        </div>
+        <div id="profile-view" class="detail-grid"></div>
+        <form id="form-profile" class="auth-form hidden">
+          <div class="field-row">
+            <label>Full name <input type="text" name="full_name" required /></label>
+            <label>Last name <input type="text" name="last_name" required /></label>
+          </div>
+          <label>Phone <input type="tel" name="phone" /></label>
+          <label>Date of birth <input type="date" name="date_of_birth" /></label>
+          <label>Address <input type="text" name="address" placeholder="Street, city, state" /></label>
+          <label>Timezone
+            <select name="timezone">
+              <option value="">Default (America/Chicago)</option>
+              <option value="America/New_York">Eastern</option>
+              <option value="America/Chicago">Central</option>
+              <option value="America/Denver">Mountain</option>
+              <option value="America/Los_Angeles">Pacific</option>
+            </select>
+          </label>
+          <label>Care notes <textarea name="notes" rows="3" placeholder="Allergies, mobility needs, reminders…"></textarea></label>
+          <div class="form-actions-row">
+            <button type="submit" class="submit-btn">Save profile</button>
+            <button type="button" class="btn-secondary" id="btn-cancel-profile">Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Medications -->
+      <section id="section-medications" class="detail-section">
+        <div class="section-label-row">
+          <h3 class="section-label">Medications</h3>
+        </div>
+        <ul id="med-list" class="detail-list"></ul>
+        <p id="med-empty" class="detail-empty hidden">No medications yet.</p>
+        <form id="form-medication" class="detail-add-form auth-form">
+          <p class="form-section-title">Add medication</p>
+
+          <label>
+            Choose from common medications
+            <select id="med-preset-select">
+              <option value="">— Select a medication —</option>
+              <option value="custom">Custom medication (enter manually)</option>
+            </select>
+          </label>
+
+          <div id="med-preset-list" class="med-preset-list" aria-label="Common medications"></div>
+
+          <div id="med-custom-fields">
+            <div class="field-row">
+              <label>Name <input type="text" name="name" required placeholder="Lisinopril" /></label>
+              <label>Dosage <input type="text" name="dosage" required placeholder="10mg" /></label>
+            </div>
+            <div class="field-row">
+              <label>Frequency <input type="text" name="frequency" required placeholder="Daily" /></label>
+              <label>
+                Times per day
+                <select id="med-times-count">
+                  <option value="1">Once</option>
+                  <option value="2">Twice</option>
+                  <option value="3">Three times</option>
+                  <option value="4">Four times</option>
+                  <option value="5">Five times</option>
+                  <option value="6">Six times</option>
+                </select>
+              </label>
+            </div>
+            <div id="med-time-fields" class="med-time-fields">
+              <span class="detail-label">Dose times</span>
+              <div id="med-time-inputs" class="med-time-inputs"></div>
+            </div>
+            <label>Instructions <input type="text" name="instructions" placeholder="Take with food" /></label>
+          </div>
+
+          <button type="submit" class="submit-btn">Add medication</button>
+        </form>
+      </section>
+
+      <!-- Medical history -->
+      <section class="detail-section">
+        <div class="section-label-row">
+          <h3 class="section-label">Medical history</h3>
+        </div>
+        <ul id="history-list" class="detail-list"></ul>
+        <p id="history-empty" class="detail-empty hidden">No medical history entries yet.</p>
+        <form id="form-history" class="detail-add-form auth-form">
+          <p class="form-section-title">Add entry</p>
+          <div class="field-row">
+            <label>Category
+              <select name="category" required>
+                <option value="condition">Condition</option>
+                <option value="allergy">Allergy</option>
+                <option value="surgery">Surgery</option>
+                <option value="note">Note</option>
+              </select>
+            </label>
+            <label>Title <input type="text" name="title" required placeholder="Type 2 diabetes" /></label>
+          </div>
+          <label>Description <input type="text" name="description" placeholder="Optional details" /></label>
+          <label>Date occurred <input type="date" name="date_occurred" /></label>
+          <button type="submit" class="submit-btn">Add entry</button>
+        </form>
+      </section>
+
+      <!-- Contacts -->
+      <section class="detail-section">
+        <div class="section-label-row">
+          <h3 class="section-label">Healthcare contacts</h3>
+        </div>
+        <ul id="contact-list" class="detail-list"></ul>
+        <p id="contact-empty" class="detail-empty hidden">No contacts yet.</p>
+        <form id="form-contact" class="detail-add-form auth-form">
+          <p class="form-section-title">Add contact</p>
+          <div class="field-row">
+            <label>Name <input type="text" name="name" required placeholder="Dr. Patel" /></label>
+            <label>Type
+              <select name="contact_type" required>
+                <option value="doctor">Doctor</option>
+                <option value="hospital">Hospital</option>
+                <option value="pharmacy">Pharmacy</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label>Phone <input type="tel" name="phone" required placeholder="555-0100" /></label>
+            <label>Specialty <input type="text" name="specialty" placeholder="Cardiology" /></label>
+          </div>
+          <label>Address <input type="text" name="address" placeholder="Clinic address" /></label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_primary" /> Primary contact
+          </label>
+          <button type="submit" class="submit-btn">Add contact</button>
+        </form>
+      </section>
+
+      <!-- Check-ins -->
+      <section class="detail-section">
+        <div class="section-label-row">
+          <h3 class="section-label">Wellness check-ins</h3>
+        </div>
+        <p id="checkin-status" class="checkin-status-line"></p>
+        <ul id="checkin-list" class="detail-list"></ul>
+        <p id="checkin-empty" class="detail-empty hidden">No check-ins yet.</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="constants.js"></script>
+  <script src="common.js"></script>
+  <script src="patient-detail.js"></script>
+</body>
+</html>

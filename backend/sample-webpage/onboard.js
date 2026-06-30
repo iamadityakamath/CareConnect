@@ -128,7 +128,7 @@ async function loadExistingPatients() {
     const mapped = (elders || []).map((e) => ({
       full_name: e.full_name,
       last_name: e.last_name,
-      login_code: null,
+      login_code: e.login_code,
     }));
     addedThisSession = mapped;
     renderPatientsList(addedThisSession);
@@ -178,7 +178,7 @@ $("#form-provision-patient").addEventListener("submit", async (e) => {
     renderPatientsList(addedThisSession);
 
     showMessage(
-      `${fullName} added. Share last name "${lastName}" and code "${loginCode}" with them. Add another below or continue to dashboard.`,
+      `${fullName} added. Share last name "${lastName}" and code "${loginCode}" with them. Add more below or go to home to view details.`,
       "success"
     );
     resetForm();
