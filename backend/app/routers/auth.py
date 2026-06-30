@@ -6,6 +6,7 @@ from app.models.auth import (
     AuthSessionResponse,
     CaregiverLoginRequest,
     CaregiverSignupRequest,
+    RefreshTokenRequest,
 )
 from app.models.patient import PatientLoginRequest
 from app.models.user import UserResponse
@@ -47,6 +48,16 @@ def patient_login(
 ):
     """Sign in a patient with last name + numeric code."""
     return auth_service.patient_login(db, body.last_name, body.login_code)
+
+
+@router.post("/refresh", response_model=AuthSessionResponse)
+def refresh_session(
+    body: RefreshTokenRequest,
+    db: Client = Depends(get_db),
+):
+    """Refresh an expired access token using a refresh token."""
+    session = auth_service.refresh_session(db, body.refresh_token)
+    return session
 
 
 @router.get("/me", response_model=UserResponse)

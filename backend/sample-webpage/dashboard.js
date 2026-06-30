@@ -317,18 +317,9 @@ async function loadDashboard() {
 }
 
 async function init() {
-  const session = getSession();
-  if (!session?.access_token || !session.user) {
-    window.location.href = "index.html";
-    return;
-  }
+  const session = await initCaregiverShell();
+  if (!session) return;
 
-  if (session.user.role !== "caregiver") {
-    window.location.href = "patient-home.html";
-    return;
-  }
-
-  initCaregiverShell();
   $("#caregiver-view")?.classList.remove("hidden");
   setHomeLoading(true);
 

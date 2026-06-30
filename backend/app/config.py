@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     GOOGLE_PLACES_API_KEY: str = ""
     ENVIRONMENT: str = "development"
     PATIENT_AUTH_EMAIL_DOMAIN: str = "careconnect.internal"
+    PATIENT_SESSION_DAYS: int = 30
 
     model_config = SettingsConfigDict(env_file=".env")
 

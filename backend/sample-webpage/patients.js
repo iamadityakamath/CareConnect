@@ -51,7 +51,7 @@ async function loadPatients() {
 }
 
 async function init() {
-  if (!initCaregiverShell()) return;
+  if (!(await initCaregiverShell())) return;
 
   try {
     await loadPatients();

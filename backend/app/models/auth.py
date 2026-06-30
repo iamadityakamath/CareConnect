@@ -17,9 +17,15 @@ class CaregiverLoginRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=1)
+
+
 class AuthSessionResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    expires_at: int | None = None
+    persistent_until: int | None = None
     user: UserResponse

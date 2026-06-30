@@ -1,6 +1,9 @@
 import uuid
 from datetime import datetime, timezone as dt_timezone
 
+import time
+
+import httpx
 from supabase import Client, create_client
 
 from app.config import get_settings
@@ -30,15 +33,24 @@ def _anon_client() -> Client:
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
 
 
-def _session_response(session, profile: dict) -> dict:
+def _session_response(
+    session, profile: dict, *, set_patient_persistent: bool = True
+) -> dict:
     """Build a standard auth session payload."""
-    return {
+    now = int(time.time())
+    expires_in = session.expires_in or 3600
+    payload = {
         "access_token": session.access_token,
         "refresh_token": session.refresh_token,
         "token_type": "bearer",
-        "expires_in": session.expires_in,
+        "expires_in": expires_in,
+        "expires_at": now + expires_in,
         "user": public_user(profile),
     }
+    if set_patient_persistent and profile.get("role") == "elder":
+        settings = get_settings()
+        payload["persistent_until"] = now + settings.PATIENT_SESSION_DAYS * 86400
+    return payload
 
 
 def caregiver_signup(
@@ -270,6 +282,45 @@ def patient_login(db: Client, last_name: str, login_code: str) -> dict:
         matched_profile["account_status"] = "active"
 
     return _session_response(session, matched_profile)
+
+
+def refresh_session(db: Client, refresh_token: str) -> dict:
+    """Exchange a Supabase refresh token for a new access token."""
+    settings = get_settings()
+    try:
+        response = httpx.post(
+            f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/token",
+            params={"grant_type": "refresh_token"},
+            json={"refresh_token": refresh_token},
+            headers={
+                "apikey": settings.SUPABASE_ANON_KEY,
+                "Content-Type": "application/json",
+            },
+            timeout=15.0,
+        )
+    except httpx.HTTPError as exc:
+        raise UnauthorizedError("Session expired. Please sign in again.") from exc
+
+    if response.status_code >= 400:
+        raise UnauthorizedError("Session expired. Please sign in again.")
+
+    payload = response.json()
+    user_id = payload.get("user", {}).get("id")
+    if not user_id:
+        raise UnauthorizedError("Session expired. Please sign in again.")
+
+    profile_row = first_row(
+        db.table("users").select("*").eq("id", user_id).limit(1).execute()
+    )
+    if not profile_row:
+        raise UnauthorizedError("User profile not found")
+
+    class _RefreshedSession:
+        access_token = payload["access_token"]
+        refresh_token = payload.get("refresh_token") or refresh_token
+        expires_in = payload.get("expires_in") or 3600
+
+    return _session_response(_RefreshedSession(), profile_row, set_patient_persistent=False)
 
 
 def update_patient_login_code(

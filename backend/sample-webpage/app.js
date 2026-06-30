@@ -1,34 +1,8 @@
-const SESSION_KEY = "careconnect_session";
-
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 let currentPersona = "caregiver";
 let currentMode = "login";
-
-function getApiBase() {
-  const { origin, pathname } = window.location;
-  if (origin.startsWith("http") && pathname.includes("/sample-webpage")) {
-    return origin;
-  }
-  return "http://localhost:8000";
-}
-
-function getSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
-  }
-}
-
-function setSession(data) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
-}
-
-function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
-}
 
 function showMessage(text, type) {
   const el = $("#message");
@@ -50,7 +24,7 @@ function formToObject(form) {
   return data;
 }
 
-async function apiRequest(path, options = {}) {
+async function loginRequest(path, options = {}) {
   const res = await fetch(`${getApiBase()}${path}`, {
     ...options,
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -164,10 +138,11 @@ async function submitForm(form, path, label, options = {}) {
 
   try {
     const body = formToObject(form);
-    const data = await apiRequest(path, {
+    const data = await loginRequest(path, {
       method: "POST",
       body: JSON.stringify(body),
     });
+    if (!data) return;
     redirectAfterAuth(data, options);
   } catch (err) {
     showMessage(err.message || `${label} failed.`, "error");
@@ -199,11 +174,22 @@ $("#form-caregiver-signup").addEventListener("submit", (e) => {
   submitForm(e.target, "/auth/caregiver/signup", "Sign up", { isSignup: true });
 });
 
-const existing = getSession();
-if (existing?.access_token && existing?.user) {
-  window.location.href =
-    existing.user.role === "caregiver" ? "dashboard.html" : "patient-home.html";
-} else {
+async function initLoginPage() {
+  const existing = getSession();
+  if (existing?.access_token && existing?.user) {
+    if (patientSessionExpired(existing)) {
+      clearSession();
+    } else {
+      const session = await ensureValidSession();
+      if (session?.access_token && session?.user) {
+        window.location.href =
+          session.user.role === "caregiver" ? "dashboard.html" : "patient-home.html";
+        return;
+      }
+    }
+  }
   setPersona("caregiver");
   setMode("login");
 }
+
+initLoginPage();

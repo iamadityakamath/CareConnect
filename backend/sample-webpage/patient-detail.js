@@ -476,7 +476,7 @@ async function loadSections() {
 }
 
 async function init() {
-  if (!initCaregiverShell()) return;
+  if (!(await initCaregiverShell())) return;
 
   if (!patientId) {
     showPageMessage("Missing patient id.", "error");

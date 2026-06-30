@@ -287,7 +287,7 @@ async function confirmDose(button) {
     });
     showPatientMessage("Great job — marked as taken.", "success");
 
-    const session = requireSession();
+    const session = await requireSession();
     if (!session) return;
 
     confirmingId = null;
@@ -331,7 +331,7 @@ function bindPeriodNav() {
 }
 
 async function init() {
-  const session = requireSession();
+  const session = await requireSession();
   if (!session) return;
 
   if (session.user?.role === "caregiver") {

@@ -109,6 +109,34 @@ def test_provision_patient_requires_caregiver(caregiver_client):
     assert response.status_code == 201
 
 
+def test_refresh_session_endpoint(mock_db):
+    app.dependency_overrides[get_db] = lambda: mock_db
+    with patch("app.services.auth_service.refresh_session") as mock_refresh:
+        mock_refresh.return_value = {
+            "access_token": "new-token",
+            "refresh_token": "new-refresh",
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "expires_at": 1_700_000_000,
+            "user": {
+                "id": "patient-1",
+                "full_name": "John Smith",
+                "last_name": "Smith",
+                "role": "elder",
+                "account_status": "active",
+            },
+        }
+        client = TestClient(app)
+        response = client.post(
+            "/auth/refresh",
+            json={"refresh_token": "old-refresh"},
+        )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["access_token"] == "new-token"
+
+
 def test_patient_cannot_access_caregiver_adherence(mock_db):
     """Patients must not reach caregiver-only adherence endpoint."""
     app.dependency_overrides[get_db] = lambda: mock_db
