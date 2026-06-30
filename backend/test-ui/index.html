@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — Auth Test</title>
+  <link rel="stylesheet" href="/test-ui/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <h1>CareConnect</h1>
+      <p class="subtitle">Test login &amp; signup</p>
+    </header>
+
+    <!-- Connection settings -->
+    <section class="card" id="config-section">
+      <h2>Connection settings</h2>
+      <p class="hint">Used by this test page. Auth goes through the CareConnect API (Supabase runs on the backend).</p>
+      <div class="grid">
+        <label>
+          API base URL
+          <input type="url" id="api-base" value="http://localhost:8000" placeholder="http://localhost:8000" />
+        </label>
+        <label>
+          Supabase project URL
+          <input type="url" id="supabase-url" placeholder="https://xxx.supabase.co" />
+        </label>
+        <label class="full">
+          Supabase anon key
+          <input type="text" id="supabase-anon-key" placeholder="eyJhbG..." autocomplete="off" />
+        </label>
+      </div>
+      <button type="button" class="btn secondary" id="save-config">Save settings</button>
+      <button type="button" class="btn ghost" id="load-config">Reload from API</button>
+    </section>
+
+    <!-- Session banner -->
+    <section class="card session hidden" id="session-card">
+      <h2>Signed in</h2>
+      <div id="session-user" class="session-user"></div>
+      <p class="token-label">Access token (stored in sessionStorage)</p>
+      <code id="session-token" class="token-preview"></code>
+      <div class="row">
+        <button type="button" class="btn secondary" id="btn-me">Test GET /auth/me</button>
+        <button type="button" class="btn ghost" id="btn-logout">Log out</button>
+      </div>
+      <pre id="me-result" class="result hidden"></pre>
+    </section>
+
+    <!-- Persona tabs -->
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="caregiver-signup">Caregiver sign up</button>
+      <button type="button" class="tab" data-tab="caregiver-login">Caregiver log in</button>
+      <button type="button" class="tab" data-tab="patient-login">Patient log in</button>
+      <button type="button" class="tab" data-tab="patient-provision">Add patient</button>
+    </div>
+
+    <!-- Caregiver signup -->
+    <section class="card panel active" id="panel-caregiver-signup">
+      <h2>Create caregiver account</h2>
+      <p class="hint">POST /auth/caregiver/signup — creates Supabase Auth user + profile</p>
+      <form id="form-caregiver-signup">
+        <div class="grid">
+          <label>Email <input type="email" name="email" required placeholder="you@example.com" /></label>
+          <label>Password <input type="password" name="password" required minlength="8" placeholder="Min 8 characters" /></label>
+          <label>First / full name <input type="text" name="full_name" required placeholder="Jane Doe" /></label>
+          <label>Last name <input type="text" name="last_name" required placeholder="Doe" /></label>
+          <label class="full">Phone <span class="optional">(optional)</span>
+            <input type="tel" name="phone" placeholder="555-0100" />
+          </label>
+        </div>
+        <button type="submit" class="btn primary">Sign up as caregiver</button>
+      </form>
+    </section>
+
+    <!-- Caregiver login -->
+    <section class="card panel" id="panel-caregiver-login">
+      <h2>Caregiver log in</h2>
+      <p class="hint">POST /auth/caregiver/login</p>
+      <form id="form-caregiver-login">
+        <div class="grid">
+          <label>Email <input type="email" name="email" required value="jane.doe@careconnect.demo" /></label>
+          <label>Password <input type="password" name="password" required value="DemoCare123!" /></label>
+        </div>
+        <button type="submit" class="btn primary">Log in as caregiver</button>
+      </form>
+    </section>
+
+    <!-- Patient login -->
+    <section class="card panel" id="panel-patient-login">
+      <h2>Patient log in</h2>
+      <p class="hint">POST /auth/patient-login — last name + numeric code (no email)</p>
+      <form id="form-patient-login">
+        <div class="grid">
+          <label>Last name <input type="text" name="last_name" required value="Smith" /></label>
+          <label>Login code <input type="text" name="login_code" required pattern="\d{4,6}" inputmode="numeric" maxlength="6" placeholder="4–6 digits" value="2847" /></label>
+        </div>
+        <button type="submit" class="btn primary">Log in as patient</button>
+      </form>
+    </section>
+
+    <!-- Add patient -->
+    <section class="card panel" id="panel-patient-provision">
+      <h2>Add patient (caregiver only)</h2>
+      <p class="hint">POST /patients/provision — requires caregiver access token</p>
+      <form id="form-patient-provision">
+        <div class="grid">
+          <label>Full name <input type="text" name="full_name" required placeholder="Margaret Smith" /></label>
+          <label>Last name <input type="text" name="last_name" required placeholder="Smith" /></label>
+          <label>Login code for patient <input type="text" name="login_code" required pattern="\d{4,6}" inputmode="numeric" maxlength="6" placeholder="4–6 digits" /></label>
+          <label>Phone <span class="optional">(optional)</span>
+            <input type="tel" name="phone" placeholder="555-0200" />
+          </label>
+        </div>
+        <button type="submit" class="btn primary">Create patient account</button>
+      </form>
+    </section>
+
+    <!-- Response / errors -->
+    <section class="card" id="response-card">
+      <h2>Response</h2>
+      <div id="status" class="status idle">Submit a form to see the API response.</div>
+      <pre id="response-body" class="result hidden"></pre>
+    </section>
+  </div>
+
+  <script src="/test-ui/app.js"></script>
+</body>
+</html>

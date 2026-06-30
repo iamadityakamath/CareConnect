@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — Add patients</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="layout layout-wide">
+    <aside class="hero" aria-hidden="true">
+      <div class="hero-inner">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/>
+            <path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1>Add your patients</h1>
+        <p class="hero-tagline">Create an account for each person you care for. They'll sign in with their last name and a simple code.</p>
+        <ul class="hero-features">
+          <li>Add as many patients as you need</li>
+          <li>Each gets their own login code</li>
+          <li>Go to your dashboard when you're done</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="auth-panel auth-panel-scroll">
+      <div class="auth-card auth-card-wide">
+        <header class="auth-header">
+          <p class="eyebrow">Step 2 of 2</p>
+          <h2>Add patients</h2>
+          <p class="auth-subtitle">Fill in the form below for each person. You can add multiple before continuing.</p>
+        </header>
+
+        <div id="caregiver-banner" class="caregiver-banner hidden">
+          Signed in as <strong id="caregiver-name"></strong>
+        </div>
+
+        <!-- Patients already added -->
+        <section id="patients-added-section" class="patients-added-section hidden">
+          <div class="section-label-row">
+            <h3 class="section-label">Patients added</h3>
+            <span id="patient-count" class="count-badge">0</span>
+          </div>
+          <ul id="patients-added-list" class="patients-added-list"></ul>
+        </section>
+
+        <!-- Add patient form (always visible) -->
+        <section class="add-patient-section">
+          <h3 class="section-label" id="form-section-title">New patient</h3>
+          <form id="form-provision-patient" class="auth-form">
+            <div class="field-row">
+              <label>
+                Full name
+                <input type="text" name="full_name" required autocomplete="name" placeholder="Margaret Smith" />
+              </label>
+              <label>
+                Last name <span class="field-hint">(used to sign in)</span>
+                <input type="text" name="last_name" required autocomplete="family-name" placeholder="Smith" />
+              </label>
+            </div>
+
+            <label>
+              Phone <span class="optional">(optional)</span>
+              <input type="tel" name="phone" autocomplete="tel" placeholder="555-0200" />
+            </label>
+
+            <label>
+              Timezone <span class="optional">(optional)</span>
+              <select name="timezone" id="timezone-select">
+                <option value="">Default (America/Chicago)</option>
+                <option value="America/New_York">Eastern (America/New_York)</option>
+                <option value="America/Chicago">Central (America/Chicago)</option>
+                <option value="America/Denver">Mountain (America/Denver)</option>
+                <option value="America/Los_Angeles">Pacific (America/Los_Angeles)</option>
+              </select>
+            </label>
+
+            <div class="login-code-block">
+              <label>
+                Patient login code
+                <span class="field-hint">4–6 digits — share this with your patient</span>
+                <div class="code-input-row">
+                  <input type="text" name="login_code" id="login-code" required inputmode="numeric" pattern="\d{4,6}" maxlength="6" autocomplete="off" placeholder="e.g. 2847" />
+                  <button type="button" class="btn-secondary" id="btn-generate-code">Generate</button>
+                </div>
+              </label>
+            </div>
+
+            <button type="submit" class="submit-btn" id="btn-submit-patient">Add patient</button>
+          </form>
+        </section>
+
+        <div id="message" class="message" role="status" aria-live="polite"></div>
+
+        <div class="onboard-footer-actions">
+          <button type="button" class="submit-btn btn-outline" id="btn-go-dashboard">Continue to dashboard</button>
+          <button type="button" class="text-link" id="btn-skip">Skip for now</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="onboard.js"></script>
+</body>
+</html>

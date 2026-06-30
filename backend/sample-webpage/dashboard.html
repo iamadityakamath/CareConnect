@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="dashboard" class="dashboard">
+    <header class="dash-header">
+      <div class="dash-brand">
+        <span class="logo-mark small" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/><path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+        </span>
+        <span>CareConnect</span>
+      </div>
+      <div class="dash-actions">
+        <button type="button" id="btn-scroll-add" class="btn-secondary hidden">+ Add patient</button>
+        <button type="button" id="btn-logout" class="logout-btn">Log out</button>
+      </div>
+    </header>
+
+    <main class="dash-main dash-main-wide">
+      <div id="caregiver-view" class="hidden">
+        <header class="dash-section-header">
+          <div>
+            <h2>Your patients</h2>
+            <p class="dash-subtitle">Manage care for everyone linked to your account.</p>
+          </div>
+        </header>
+
+        <div id="patients-list" class="patients-list"></div>
+        <p id="patients-empty" class="empty-state hidden">
+          No patients yet — use the form below to add your first one.
+        </p>
+
+        <!-- Inline add-patient form -->
+        <section id="add-patient-section" class="add-patient-panel">
+          <h3 class="section-label" id="dash-form-title">Add a patient</h3>
+          <form id="form-provision-patient" class="auth-form">
+            <div class="field-row">
+              <label>
+                Full name
+                <input type="text" name="full_name" required placeholder="Margaret Smith" />
+              </label>
+              <label>
+                Last name
+                <input type="text" name="last_name" required placeholder="Smith" />
+              </label>
+            </div>
+            <label>
+              Phone <span class="optional">(optional)</span>
+              <input type="tel" name="phone" placeholder="555-0200" />
+            </label>
+            <div class="login-code-block">
+              <label>
+                Login code
+                <span class="field-hint">4–6 digits for patient sign-in</span>
+                <div class="code-input-row">
+                  <input type="text" name="login_code" id="dash-login-code" required inputmode="numeric" pattern="\d{4,6}" maxlength="6" placeholder="2847" />
+                  <button type="button" class="btn-secondary" id="btn-generate-code">Generate</button>
+                </div>
+              </label>
+            </div>
+            <button type="submit" class="submit-btn" id="btn-submit-patient">Add patient</button>
+          </form>
+          <div id="dash-form-message" class="message" role="status" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <div id="patient-view" class="hidden">
+        <h2>Welcome back</h2>
+        <div id="user-card" class="user-card"></div>
+        <p class="dash-hint">You're signed in as a patient. Your caregiver manages your care plan.</p>
+      </div>
+
+      <div id="dash-message" class="message" role="status"></div>
+    </main>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

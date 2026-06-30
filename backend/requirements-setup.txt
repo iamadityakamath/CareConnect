@@ -1,0 +1,3 @@
+# Optional — only needed for scripts/setup_supabase.py
+# Uses psycopg v3 (has wheels for Python 3.14+; psycopg2-binary often fails there)
+psycopg[binary]>=3.2

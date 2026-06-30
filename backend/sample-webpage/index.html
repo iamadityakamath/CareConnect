@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareConnect — Sign in</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="hero" aria-hidden="true">
+      <div class="hero-inner">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="48" height="48" rx="14" fill="currentColor" opacity="0.15"/>
+            <path d="M24 12v24M12 24h24" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1>CareConnect</h1>
+        <p class="hero-tagline">Stay connected with the people who matter most.</p>
+        <ul class="hero-features">
+          <li>Medication reminders &amp; adherence tracking</li>
+          <li>Daily wellness check-ins</li>
+          <li>Medical history at your fingertips</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="auth-panel">
+      <div class="auth-card">
+        <header class="auth-header">
+          <p class="eyebrow">Welcome</p>
+          <h2 id="auth-title">Caregiver sign in</h2>
+          <p id="auth-subtitle" class="auth-subtitle">Manage care for your loved ones.</p>
+        </header>
+
+        <!-- Who are you? -->
+        <div class="persona-switch" role="tablist" aria-label="I am a">
+          <button type="button" class="persona-btn" data-persona="patient" role="tab" aria-selected="false">
+            <span class="persona-label">Patient</span>
+            <span class="persona-hint">Sign in with your code</span>
+          </button>
+          <button type="button" class="persona-btn active" data-persona="caregiver" role="tab" aria-selected="true">
+            <span class="persona-label">Caregiver</span>
+            <span class="persona-hint">Manage patient care</span>
+          </button>
+        </div>
+
+        <!-- Patient: login only -->
+        <section id="view-patient" class="persona-view" hidden>
+          <p class="form-note">Use the last name and numeric code your caregiver gave you.</p>
+          <form id="form-patient-login" class="auth-form">
+            <label>
+              Last name
+              <input type="text" name="last_name" required autocomplete="family-name" placeholder="Smith" />
+            </label>
+            <label>
+              Login code
+              <input type="password" name="login_code" required inputmode="numeric" pattern="\d{4,6}" maxlength="6" autocomplete="off" placeholder="4–6 digits" />
+            </label>
+            <button type="submit" class="submit-btn">Log in</button>
+          </form>
+        </section>
+
+        <!-- Caregiver: login (default) or signup -->
+        <section id="view-caregiver" class="persona-view active">
+          <div id="caregiver-mode-switch" class="mode-switch" role="tablist" aria-label="Caregiver authentication">
+            <button type="button" class="mode-btn active" data-mode="login" role="tab" aria-selected="true">Log in</button>
+            <button type="button" class="mode-btn" data-mode="signup" role="tab" aria-selected="false">Sign up</button>
+          </div>
+
+          <form id="form-caregiver-login" class="auth-form caregiver-panel active">
+            <label>
+              Email
+              <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" required autocomplete="current-password" placeholder="Your password" />
+            </label>
+            <button type="submit" class="submit-btn">Log in</button>
+          </form>
+
+          <form id="form-caregiver-signup" class="auth-form caregiver-panel" hidden>
+            <p class="form-note">Create an account to add patients and manage their care.</p>
+            <div class="field-row">
+              <label>
+                Full name
+                <input type="text" name="full_name" required autocomplete="name" placeholder="Jane Doe" />
+              </label>
+              <label>
+                Last name
+                <input type="text" name="last_name" required autocomplete="family-name" placeholder="Doe" />
+              </label>
+            </div>
+            <label>
+              Email
+              <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
+            </label>
+            <label>
+              Phone <span class="optional">(optional)</span>
+              <input type="tel" name="phone" autocomplete="tel" placeholder="555-0100" />
+            </label>
+            <button type="submit" class="submit-btn">Create account</button>
+          </form>
+        </section>
+
+        <div id="message" class="message" role="status" aria-live="polite"></div>
+      </div>
+
+      <p class="footer-note">Sample frontend · connects to the CareConnect API</p>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
