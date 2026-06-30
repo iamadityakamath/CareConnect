@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PATIENT_AUTH_EMAIL_DOMAIN: str = "careconnect.internal"
     PATIENT_SESSION_DAYS: int = 30
+    CORS_ALLOW_ORIGINS: str = "*"
 
     model_config = SettingsConfigDict(env_file=".env")
 

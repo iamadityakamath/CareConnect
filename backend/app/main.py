@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.responses import Response
 
+from app.cors import configure_cors
 from app.exceptions import register_exception_handlers
 from app.routers import (
     auth,
@@ -21,12 +21,7 @@ from app.routers import (
 
 app = FastAPI(title="CareConnect API", version="0.1.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+configure_cors(app)
 
 register_exception_handlers(app)
 
