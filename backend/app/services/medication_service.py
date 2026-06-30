@@ -8,12 +8,12 @@ from app.pillbox_compat import (
     align_dose_instructions,
     attach_pillbox_schedules,
     create_pillbox_schedule,
-    encode_stored_dose_instructions,
     ensure_pillbox_patient,
     get_medications_id_column,
     instruction_for_dose_index,
     medications_use_patient_id,
     normalize_medication_row,
+    prepare_medication_write_payload,
 )
 from app.services.user_service import verify_caregiver_for_elder, verify_elder_access
 
@@ -30,53 +30,45 @@ def create_medication(db: Client, caregiver_id: str, data: dict) -> dict:
         data.get("dose_instructions"),
         data.get("instructions"),
     )
-    data["dose_instructions"] = dose_instructions
-    data["instructions"] = dose_instructions[0] if dose_instructions else data.get("instructions")
+    write_data = {
+        **data,
+        "dose_instructions": dose_instructions,
+        "instructions": dose_instructions[0] if dose_instructions else data.get("instructions"),
+        "active": True,
+        "created_by": caregiver_id,
+    }
 
+    elder_profile: dict = {}
     if medications_use_patient_id(db):
-        elder = first_row(
+        elder_profile = first_row(
             db.table("users").select("full_name, timezone").eq("id", elder_id).limit(1).execute()
         ) or {}
         ensure_pillbox_patient(
             db,
             caregiver_id,
             elder_id,
-            elder.get("full_name") or data.get("name") or "Patient",
+            elder_profile.get("full_name") or data.get("name") or "Patient",
         )
+        write_data.setdefault("form", "pill")
 
-        pillbox_payload = {
-            "patient_id": elder_id,
-            "name": data["name"],
-            "dosage_text": data["dosage"],
-            "form": "pill",
-            "instructions": data["instructions"],
-            "active": True,
-            "created_by": caregiver_id,
-            "dose_instructions": dose_instructions,
-        }
-        try:
-            result = db.table("medications").insert(pillbox_payload).execute()
-        except Exception:
-            pillbox_payload["instructions"] = encode_stored_dose_instructions(dose_instructions)
-            pillbox_payload.pop("dose_instructions", None)
-            result = db.table("medications").insert(pillbox_payload).execute()
-        if not result.data:
-            raise ValidationError("Failed to create medication")
+    payload = prepare_medication_write_payload(db, write_data)
+    if not payload:
+        raise ValidationError("Failed to create medication")
 
-        med = result.data[0]
+    result = db.table("medications").insert(payload).execute()
+    if not result.data:
+        raise ValidationError("Failed to create medication")
+
+    med = result.data[0]
+    if medications_use_patient_id(db):
         create_pillbox_schedule(
             db,
             med["id"],
             scheduled_times,
             frequency,
-            elder.get("timezone") or "America/Chicago",
+            elder_profile.get("timezone") or "America/Chicago",
         )
-        return normalize_medication_row(med, data)
-
-    result = db.table("medications").insert(data).execute()
-    if not result.data:
-        raise ValidationError("Failed to create medication")
-    return normalize_medication_row(result.data[0], data)
+    return normalize_medication_row(med, write_data)
 
 
 def list_medications(db: Client, elder_id: str, requester_id: str, requester_role: str) -> list[dict]:
@@ -185,15 +177,29 @@ def update_medication(db: Client, medication_id: str, caregiver_id: str, updates
     if not filtered:
         return med
 
+    if "dose_instructions" in filtered or "scheduled_times" in filtered:
+        times = filtered.get("scheduled_times") or med.get("scheduled_times") or []
+        filtered["dose_instructions"] = align_dose_instructions(
+            times,
+            filtered.get("dose_instructions", med.get("dose_instructions")),
+            filtered.get("instructions", med.get("instructions")),
+        )
+        if filtered["dose_instructions"]:
+            filtered["instructions"] = filtered["dose_instructions"][0]
+
+    payload = prepare_medication_write_payload(db, filtered)
+    if not payload:
+        return med
+
     result = (
         db.table("medications")
-        .update(filtered)
+        .update(payload)
         .eq("id", medication_id)
         .execute()
     )
     if not result.data:
         raise NotFoundError("Medication not found")
-    return result.data[0]
+    return normalize_medication_row(result.data[0], {**med, **filtered})
 
 
 def soft_delete_medication(db: Client, medication_id: str, caregiver_id: str) -> dict:

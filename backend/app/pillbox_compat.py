@@ -7,6 +7,7 @@ from supabase import Client
 from app.db_utils import first_row
 
 _MEDICATIONS_ID_COLUMN: str | None = None
+_MEDICATIONS_COLUMNS: frozenset[str] | None = None
 _USERS_COLUMNS: frozenset[str] | None = None
 _PATIENTS_TABLE_AVAILABLE: bool | None = None
 _DOSE_INSTRUCTIONS_PREFIX = "__dose_json:"
@@ -27,6 +28,22 @@ _USERS_BASE_COLUMNS = (
 )
 _USERS_OPTIONAL_DETAIL_COLUMNS = ("date_of_birth", "address", "notes")
 _USERS_PROBE_COLUMNS = _USERS_BASE_COLUMNS + _USERS_OPTIONAL_DETAIL_COLUMNS
+
+_MEDICATIONS_PROBE_COLUMNS = (
+    "elder_id",
+    "patient_id",
+    "name",
+    "dosage",
+    "dosage_text",
+    "form",
+    "instructions",
+    "dose_instructions",
+    "frequency",
+    "scheduled_times",
+    "active",
+    "created_at",
+    "created_by",
+)
 
 
 def _postgres_error_code(exc: Exception) -> str | None:
@@ -68,6 +85,69 @@ def get_medications_id_column(db: Client) -> str:
 def medications_use_patient_id(db: Client) -> bool:
     """Return True when medications rows are keyed by PillBox ``patient_id``."""
     return get_medications_id_column(db) == "patient_id"
+
+
+def get_medications_columns(db: Client) -> frozenset[str]:
+    """Return ``medications`` columns that exist in the connected database."""
+    global _MEDICATIONS_COLUMNS
+    if _MEDICATIONS_COLUMNS is not None:
+        return _MEDICATIONS_COLUMNS
+
+    available: set[str] = set()
+    for column in _MEDICATIONS_PROBE_COLUMNS:
+        try:
+            db.table("medications").select(column).limit(1).execute()
+            available.add(column)
+        except Exception as exc:
+            if not _is_missing_column_error(exc):
+                raise
+
+    _MEDICATIONS_COLUMNS = frozenset(available)
+    return _MEDICATIONS_COLUMNS
+
+
+def prepare_medication_write_payload(db: Client, data: dict) -> dict:
+    """Build an insert/update payload that only uses columns present in the schema."""
+    columns = get_medications_columns(db)
+    payload: dict = {}
+
+    elder_id = data.get("elder_id")
+    if elder_id:
+        if "elder_id" in columns:
+            payload["elder_id"] = elder_id
+        elif "patient_id" in columns:
+            payload["patient_id"] = elder_id
+
+    dosage = data.get("dosage")
+    if dosage is not None:
+        if "dosage" in columns:
+            payload["dosage"] = dosage
+        elif "dosage_text" in columns:
+            payload["dosage_text"] = dosage
+
+    for key in ("name", "frequency", "scheduled_times", "active", "form", "created_by"):
+        if key in data and data[key] is not None and key in columns:
+            payload[key] = data[key]
+
+    dose_instructions = data.get("dose_instructions")
+    instructions = data.get("instructions")
+
+    if dose_instructions is not None and "dose_instructions" in columns:
+        payload["dose_instructions"] = dose_instructions
+
+    if "instructions" in columns:
+        if dose_instructions is not None and "dose_instructions" not in columns:
+            payload["instructions"] = (
+                encode_stored_dose_instructions(dose_instructions) or instructions
+            )
+        elif instructions is not None:
+            payload["instructions"] = instructions
+        elif dose_instructions:
+            first = next((item for item in dose_instructions if item), None)
+            if first:
+                payload["instructions"] = first
+
+    return payload
 
 
 def get_users_columns(db: Client) -> frozenset[str]:

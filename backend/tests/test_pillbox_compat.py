@@ -7,6 +7,7 @@ from app.pillbox_compat import (
     instruction_for_dose_index,
     merge_patient_details,
     normalize_medication_row,
+    prepare_medication_write_payload,
     split_profile_updates,
 )
 
@@ -227,3 +228,60 @@ def test_filter_users_payload_drops_missing_detail_columns():
     assert "address" not in payload
     assert payload["notes"] == "Care notes"
     assert payload["full_name"] == "Jane"
+
+
+class FakeMedicationsDb:
+    """Minimal fake DB for medications column probing."""
+
+    def __init__(self, columns: set[str]):
+        self.columns = columns
+        import app.pillbox_compat as compat
+
+        compat._MEDICATIONS_COLUMNS = None
+        compat._MEDICATIONS_ID_COLUMN = None
+
+    def table(self, name):
+        if name == "medications":
+            return FakeMedicationsQuery(self.columns)
+        raise AssertionError(f"unexpected table {name}")
+
+
+class FakeMedicationsQuery:
+    def __init__(self, columns: set[str]):
+        self.columns = columns
+        self._column = None
+
+    def select(self, column, **_kwargs):
+        self._column = column
+        return self
+
+    def limit(self, *_args, **_kwargs):
+        return self
+
+    def execute(self):
+        if self._column not in self.columns:
+            raise Exception("42703 column does not exist")
+        return type("Result", (), {"data": []})()
+
+
+def test_prepare_medication_write_payload_encodes_dose_instructions_without_column():
+    db = FakeMedicationsDb(
+        {"elder_id", "name", "dosage", "instructions", "frequency", "scheduled_times", "active"}
+    )
+
+    payload = prepare_medication_write_payload(
+        db,
+        {
+            "elder_id": "elder-1",
+            "name": "Metformin",
+            "dosage": "500mg",
+            "frequency": "Twice daily",
+            "scheduled_times": ["08:00", "20:00"],
+            "dose_instructions": ["After breakfast", "After dinner"],
+            "active": True,
+        },
+    )
+
+    assert "dose_instructions" not in payload
+    assert payload["instructions"] == '__dose_json:["After breakfast", "After dinner"]'
+    assert payload["dosage"] == "500mg"
