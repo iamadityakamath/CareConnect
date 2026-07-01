@@ -331,15 +331,9 @@ function bindPeriodNav() {
 }
 
 async function init() {
-  const session = await requireSession();
+  const session = await initPatientShell();
   if (!session) return;
 
-  if (session.user?.role === "caregiver") {
-    window.location.href = "dashboard.html";
-    return;
-  }
-
-  bindLogout();
   bindPeriodNav();
 
   const firstName = (session.user.full_name || "there").split(" ")[0];

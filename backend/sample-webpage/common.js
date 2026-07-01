@@ -240,6 +240,60 @@ function bindLogout() {
   });
 }
 
+const CAREGIVER_MOBILE_TABS = [
+  {
+    href: "dashboard.html",
+    label: "Home",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-9.5Z"/></svg>`,
+    pages: ["dashboard.html"],
+  },
+  {
+    href: "patients.html",
+    label: "Patients",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    pages: ["patients.html", "patient-detail.html"],
+  },
+  {
+    href: "onboard-patient.html",
+    label: "Add",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>`,
+    pages: ["onboard-patient.html"],
+  },
+  {
+    href: "apis.html",
+    label: "APIs",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 9h8M8 15h8M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>`,
+    pages: ["apis.html"],
+  },
+];
+
+function initCaregiverMobileNav() {
+  const shell = document.querySelector(".dashboard, .layout-wide");
+  if (!shell || document.querySelector(".mobile-tab-bar")) {
+    return;
+  }
+
+  const page = window.location.pathname.split("/").pop() || "dashboard.html";
+  const nav = document.createElement("nav");
+  nav.className = "mobile-tab-bar";
+  nav.setAttribute("aria-label", "Caregiver navigation");
+
+  nav.innerHTML = CAREGIVER_MOBILE_TABS.map((tab) => {
+    const active = tab.pages.includes(page);
+    return `
+      <a href="${tab.href}" class="mobile-tab${active ? " active" : ""}"${
+        active ? ' aria-current="page"' : ""
+      }>
+        <span class="mobile-tab-icon">${tab.icon}</span>
+        <span class="mobile-tab-label">${tab.label}</span>
+      </a>
+    `;
+  }).join("");
+
+  document.body.appendChild(nav);
+  document.body.classList.add("has-mobile-tab-bar");
+}
+
 async function initCaregiverShell() {
   const session = await requireSession();
   if (!session) return null;
@@ -251,6 +305,7 @@ async function initCaregiverShell() {
 
   renderCaregiverHeader(session);
   bindLogout();
+  initCaregiverMobileNav();
   return session;
 }
 
@@ -274,6 +329,7 @@ async function initPatientShell() {
     return null;
   }
 
+  document.body.classList.add("patient-shell");
   bindLogout();
   return session;
 }

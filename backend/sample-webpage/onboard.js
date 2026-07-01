@@ -151,6 +151,9 @@ if (session) {
   $("#caregiver-banner").classList.remove("hidden");
   $("#login-code").value = generateLoginCode();
   loadExistingPatients();
+  if (typeof initCaregiverMobileNav === "function") {
+    initCaregiverMobileNav();
+  }
 }
 
 $("#btn-generate-code").addEventListener("click", () => {

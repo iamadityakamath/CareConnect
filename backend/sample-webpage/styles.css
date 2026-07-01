@@ -2768,3 +2768,293 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Mobile layouts (caregiver + patient) ───────────────────────────── */
+
+.mobile-tab-bar {
+  display: none;
+}
+
+.detail-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  .submit-btn,
+  .dose-take-btn,
+  .logout-btn,
+  .mobile-tab,
+  .period-nav-btn,
+  .detail-mobile-nav-link {
+    min-height: 44px;
+  }
+
+  /* Caregiver: bottom tab bar */
+  .has-mobile-tab-bar {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dash-nav {
+    display: none;
+  }
+
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    justify-content: space-around;
+    gap: 0.15rem;
+    padding: 0.35rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px rgba(13, 79, 79, 0.08);
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.35rem 0.25rem;
+    text-decoration: none;
+    color: var(--muted);
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .mobile-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .mobile-tab-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .mobile-tab.active {
+    color: var(--teal-800);
+    background: var(--teal-50);
+  }
+
+  .dash-header {
+    padding: 0.65rem 1rem;
+    padding-top: calc(0.65rem + env(safe-area-inset-top, 0px));
+  }
+
+  .dash-brand span:not(.logo-mark) {
+    font-size: 1rem;
+  }
+
+  .logout-btn {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .dash-main,
+  .dash-main-wide,
+  .dash-main-home,
+  .dash-main-dashboard {
+    max-width: none;
+    margin: 0;
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  .dash-section-header h2 {
+    font-size: 1.35rem;
+  }
+
+  .cg-dash-date {
+    font-size: 0.82rem;
+  }
+
+  .cg-dash-panel {
+    padding: 1rem;
+  }
+
+  .cg-attention-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cg-patient-card-footer .btn-secondary,
+  .cg-patient-card-footer .submit-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .patient-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+
+  .patient-card .btn-secondary {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Patient detail: section jump nav */
+  .detail-mobile-nav {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    padding: 0.35rem 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .detail-mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .detail-mobile-nav-link {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .detail-mobile-nav-link:active,
+  .detail-mobile-nav-link:focus-visible {
+    border-color: var(--teal-600);
+    color: var(--teal-800);
+    background: var(--teal-50);
+  }
+
+  .detail-section {
+    padding: 1rem;
+    scroll-margin-top: 0.75rem;
+  }
+
+  .patient-header-card {
+    padding: 1rem;
+  }
+
+  .med-preset-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Patient home */
+  .patient-shell .patient-app {
+    max-width: none;
+  }
+
+  .patient-header {
+    padding: 0.75rem 1rem;
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .patient-main {
+    padding: 1.25rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .patient-greeting h1 {
+    font-size: 1.75rem;
+  }
+
+  .mindfulness-card-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mindfulness-start-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .period-nav {
+    top: calc(3.25rem + env(safe-area-inset-top, 0px));
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding: 0.5rem 0;
+  }
+
+  .dose-period {
+    scroll-margin-top: 7rem;
+  }
+
+  .patient-toast {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 1.5rem);
+  }
+
+  .breathing-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .breathing-screen {
+    width: 100%;
+    min-height: 100%;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Login & onboard */
+  .auth-panel {
+    padding: 1.25rem 1rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .layout-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-panel-scroll {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .persona-switch {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .persona-btn {
+    padding: 0.85rem 0.65rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-tab-label {
+    font-size: 0.62rem;
+  }
+
+  .period-nav-btn {
+    font-size: 0.8rem;
+    padding: 0.65rem 0.35rem;
+  }
+
+  .med-preset-list {
+    grid-template-columns: 1fr;
+  }
+}
