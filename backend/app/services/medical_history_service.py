@@ -1,7 +1,11 @@
 from supabase import Client
 
-from app.db_utils import first_row
 from app.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.schema_compat import (
+    fetch_table_row,
+    map_medical_history_payload,
+    table_select_expr,
+)
 from app.services.user_service import verify_caregiver_for_elder, verify_elder_access
 
 
@@ -13,7 +17,8 @@ def create_entry(db: Client, requester_id: str, requester_role: str, data: dict)
     elder_id = data["elder_id"]
     verify_caregiver_for_elder(db, requester_id, elder_id)
 
-    result = db.table("medical_history").insert(data).execute()
+    payload = map_medical_history_payload(db, data)
+    result = db.table("medical_history").insert(payload).execute()
     if not result.data:
         raise ValidationError("Failed to create medical history entry")
     return result.data[0]
@@ -29,7 +34,11 @@ def list_entries(
 ) -> list[dict]:
     """List medical history entries, optionally filtered by category."""
     verify_elder_access(db, requester_id, elder_id, requester_role)
-    query = db.table("medical_history").select("*").eq("elder_id", elder_id)
+    query = (
+        db.table("medical_history")
+        .select(table_select_expr(db, "medical_history"))
+        .eq("elder_id", elder_id)
+    )
     if category:
         query = query.eq("category", category)
     if active_only is True:
@@ -48,12 +57,9 @@ def update_entry(
     entry = _get_entry(db, entry_id)
     verify_caregiver_for_elder(db, requester_id, entry["elder_id"])
 
-    filtered = {k: v for k, v in updates.items() if v is not None}
+    filtered = map_medical_history_payload(db, {k: v for k, v in updates.items() if v is not None})
     if not filtered:
         return entry
-
-    if "date_occurred" in filtered and filtered["date_occurred"] is not None:
-        filtered["date_occurred"] = str(filtered["date_occurred"])
 
     result = (
         db.table("medical_history")
@@ -84,7 +90,7 @@ def get_emergency_summary(
 
     allergies = (
         db.table("medical_history")
-        .select("*")
+        .select(table_select_expr(db, "medical_history"))
         .eq("elder_id", elder_id)
         .eq("category", "allergy")
         .eq("is_active", True)
@@ -92,7 +98,7 @@ def get_emergency_summary(
     )
     conditions = (
         db.table("medical_history")
-        .select("*")
+        .select(table_select_expr(db, "medical_history"))
         .eq("elder_id", elder_id)
         .eq("category", "condition")
         .eq("is_active", True)
@@ -114,13 +120,7 @@ def get_emergency_summary(
 
 
 def _get_entry(db: Client, entry_id: str) -> dict:
-    entry = first_row(
-        db.table("medical_history")
-        .select("*")
-        .eq("id", entry_id)
-        .limit(1)
-        .execute()
-    )
+    entry = fetch_table_row(db, "medical_history", "id", entry_id)
     if not entry:
         raise NotFoundError("Medical history entry not found")
     return entry

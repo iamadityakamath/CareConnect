@@ -3,12 +3,13 @@ from datetime import datetime, timezone
 from supabase import Client
 
 from app.exceptions import ValidationError
+from app.schema_compat import filter_table_payload, table_select_expr
 from app.services.user_service import verify_elder_access
 
 
 def create_checkin(db: Client, elder_id: str, mood_score: int, note: str | None) -> dict:
     """Submit a wellness check-in for an elder."""
-    payload = {"elder_id": elder_id, "mood_score": mood_score, "note": note}
+    payload = filter_table_payload(db, "checkins", {"elder_id": elder_id, "mood_score": mood_score, "note": note})
     result = db.table("checkins").insert(payload).execute()
     if not result.data:
         raise ValidationError("Failed to create check-in")
@@ -28,7 +29,7 @@ def list_checkins(
     offset = (page - 1) * page_size
     result = (
         db.table("checkins")
-        .select("*")
+        .select(table_select_expr(db, "checkins"))
         .eq("elder_id", elder_id)
         .order("created_at", desc=True)
         .range(offset, offset + page_size - 1)

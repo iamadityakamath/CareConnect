@@ -15,6 +15,13 @@ from app.pillbox_compat import (
     normalize_medication_row,
     prepare_medication_write_payload,
 )
+from app.schema_compat import (
+    fetch_table_row,
+    map_medication_log_payload,
+    medication_log_schedule_column,
+    normalize_medication_log_row,
+    table_select_expr,
+)
 from app.services.user_service import verify_caregiver_for_elder, verify_elder_access
 
 
@@ -82,7 +89,7 @@ def _list_active_medications(db: Client, elder_id: str) -> list[dict]:
     column = get_medications_id_column(db)
     result = (
         db.table("medications")
-        .select("*")
+        .select(table_select_expr(db, "medications"))
         .eq(column, elder_id)
         .eq("active", True)
         .order("created_at", desc=True)
@@ -98,14 +105,16 @@ def _dose_log_for_slot(
     db: Client, medication_id: str, scheduled_iso: str
 ) -> dict | None:
     """Find a medication log row for a scheduled dose time."""
-    return first_row(
+    schedule_column = medication_log_schedule_column(db)
+    row = first_row(
         db.table("medication_logs")
-        .select("*")
+        .select(table_select_expr(db, "medication_logs"))
         .eq("medication_id", medication_id)
-        .eq("scheduled_for", scheduled_iso)
+        .eq(schedule_column, scheduled_iso)
         .limit(1)
         .execute()
     )
+    return normalize_medication_log_row(row) if row else None
 
 
 def _build_today_dose_slots(db: Client, elder_id: str, pending_only: bool = False) -> list[dict]:
@@ -217,12 +226,13 @@ def confirm_dose(
 
     now = datetime.now(timezone.utc).isoformat()
     scheduled = scheduled_for or now
+    schedule_column = medication_log_schedule_column(db)
 
     existing = first_row(
         db.table("medication_logs")
-        .select("*")
+        .select(table_select_expr(db, "medication_logs"))
         .eq("medication_id", medication_id)
-        .eq("scheduled_for", scheduled)
+        .eq(schedule_column, scheduled)
         .limit(1)
         .execute()
     )
@@ -230,26 +240,26 @@ def confirm_dose(
     if existing:
         result = (
             db.table("medication_logs")
-            .update({"status": "taken", "taken_at": now})
+            .update(map_medication_log_payload(db, {"status": "taken", "taken_at": now}))
             .eq("id", existing["id"])
             .execute()
         )
     else:
         result = (
             db.table("medication_logs")
-            .insert({
+            .insert(map_medication_log_payload(db, {
                 "medication_id": medication_id,
                 "elder_id": elder_id,
                 "scheduled_for": scheduled,
                 "taken_at": now,
                 "status": "taken",
-            })
+            }))
             .execute()
         )
 
     if not result.data:
         raise ValidationError("Failed to confirm dose")
-    return result.data[0]
+    return normalize_medication_log_row(result.data[0])
 
 
 def get_pending_doses(db: Client, elder_id: str, requester_id: str, requester_role: str) -> list[dict]:
@@ -270,17 +280,18 @@ def get_adherence_stats(
 
     meds = _list_active_medications(db, elder_id)
 
+    schedule_column = medication_log_schedule_column(db)
     logs_result = (
         db.table("medication_logs")
-        .select("*")
+        .select(table_select_expr(db, "medication_logs"))
         .eq("elder_id", elder_id)
-        .gte("scheduled_for", since.isoformat())
+        .gte(schedule_column, since.isoformat())
         .execute()
     )
-    logs_by_key = {
-        (log["medication_id"], log["scheduled_for"][:19]): log
-        for log in (logs_result.data or [])
-    }
+    logs_by_key = {}
+    for raw_log in logs_result.data or []:
+        log = normalize_medication_log_row(raw_log)
+        logs_by_key[(log["medication_id"], log["scheduled_for"][:19])] = log
 
     taken = 0
     missed = 0
@@ -515,13 +526,7 @@ def get_caregiver_adherence_dashboard(
 
 
 def _get_medication(db: Client, medication_id: str) -> dict:
-    med = first_row(
-        db.table("medications")
-        .select("*")
-        .eq("id", medication_id)
-        .limit(1)
-        .execute()
-    )
+    med = fetch_table_row(db, "medications", "id", medication_id)
     if not med:
         raise NotFoundError("Medication not found")
     return normalize_medication_row(med)

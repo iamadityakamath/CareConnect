@@ -113,32 +113,32 @@ class FakeUsersDb:
     """Minimal fake DB for users column probing."""
 
     def __init__(self, optional_columns: set[str], has_patients: bool = True):
-        self.optional_columns = optional_columns
-        self.has_patients = has_patients
+        base = {
+            "id", "email", "auth_email", "full_name", "last_name", "role", "phone",
+            "timezone", "account_status", "created_at",
+        }
+        self.table_columns = {
+            "users": base | optional_columns,
+            "patients": {"id"} if has_patients else set(),
+        }
+        from app.schema_compat import reset_schema_cache
         import app.pillbox_compat as compat
 
-        compat._USERS_COLUMNS = None
+        reset_schema_cache()
         compat._PATIENTS_TABLE_AVAILABLE = None
+        compat._MEDICATIONS_ID_COLUMN = None
 
     def table(self, name):
         if name == "users":
-            return FakeUsersQuery(self.optional_columns)
+            return FakeUsersQuery(set(self.table_columns["users"]))
         if name == "patients":
-            return FakePatientsQuery(self.has_patients)
+            return FakePatientsQuery(bool(self.table_columns.get("patients")))
         raise AssertionError(f"unexpected table {name}")
 
 
 class FakeUsersQuery:
-    PROBED_COLUMNS = {
-        "date_of_birth",
-        "address",
-        "notes",
-        "login_code",
-        "login_code_set_at",
-    }
-
-    def __init__(self, optional_columns: set[str]):
-        self.optional_columns = optional_columns
+    def __init__(self, columns: set[str]):
+        self.columns = columns
         self._column = None
 
     def select(self, column, **_kwargs):
@@ -153,7 +153,7 @@ class FakeUsersQuery:
 
     def execute(self):
         col = self._column
-        if col in self.PROBED_COLUMNS and col not in self.optional_columns:
+        if col not in self.columns:
             raise Exception("42703 column does not exist")
         return type("Result", (), {"data": []})()
 
@@ -234,11 +234,12 @@ class FakeMedicationsDb:
     """Minimal fake DB for medications column probing."""
 
     def __init__(self, columns: set[str]):
-        self.columns = columns
+        from app.schema_compat import reset_schema_cache
         import app.pillbox_compat as compat
 
-        compat._MEDICATIONS_COLUMNS = None
+        reset_schema_cache()
         compat._MEDICATIONS_ID_COLUMN = None
+        self.columns = columns
 
     def table(self, name):
         if name == "medications":

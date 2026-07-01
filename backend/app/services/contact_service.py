@@ -1,7 +1,7 @@
 from supabase import Client
 
-from app.db_utils import first_row
 from app.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.schema_compat import fetch_table_row, filter_table_payload, table_select_expr
 from app.services.user_service import verify_caregiver_for_elder, verify_elder_access
 
 
@@ -13,7 +13,8 @@ def create_contact(db: Client, requester_id: str, requester_role: str, data: dic
     elder_id = data["elder_id"]
     verify_caregiver_for_elder(db, requester_id, elder_id)
 
-    result = db.table("contacts").insert(data).execute()
+    payload = filter_table_payload(db, "contacts", data)
+    result = db.table("contacts").insert(payload).execute()
     if not result.data:
         raise ValidationError("Failed to create contact")
     return result.data[0]
@@ -28,7 +29,11 @@ def list_contacts(
 ) -> list[dict]:
     """List contacts for an elder, optionally filtered by type."""
     verify_elder_access(db, requester_id, elder_id, requester_role)
-    query = db.table("contacts").select("*").eq("elder_id", elder_id)
+    query = (
+        db.table("contacts")
+        .select(table_select_expr(db, "contacts"))
+        .eq("elder_id", elder_id)
+    )
     if contact_type:
         query = query.eq("contact_type", contact_type)
     result = query.order("is_primary", desc=True).order("created_at", desc=True).execute()
@@ -45,7 +50,7 @@ def update_contact(
     contact = _get_contact(db, contact_id)
     verify_caregiver_for_elder(db, requester_id, contact["elder_id"])
 
-    filtered = {k: v for k, v in updates.items() if v is not None}
+    filtered = filter_table_payload(db, "contacts", {k: v for k, v in updates.items() if v is not None})
     if not filtered:
         return contact
 
@@ -73,13 +78,7 @@ def delete_contact(
 
 
 def _get_contact(db: Client, contact_id: str) -> dict:
-    contact = first_row(
-        db.table("contacts")
-        .select("*")
-        .eq("id", contact_id)
-        .limit(1)
-        .execute()
-    )
+    contact = fetch_table_row(db, "contacts", "id", contact_id)
     if not contact:
         raise NotFoundError("Contact not found")
     return contact

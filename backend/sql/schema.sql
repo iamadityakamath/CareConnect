@@ -58,7 +58,7 @@ CREATE TABLE medications (
     instructions TEXT,
     frequency TEXT NOT NULL,
     scheduled_times JSONB NOT NULL DEFAULT '[]',
-    dose_instructions JSONB NOT NULL DEFAULT '[]',
+    dose_instructions JSONB,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

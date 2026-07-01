@@ -57,17 +57,12 @@ def _fail(message: str) -> None:
 
 
 def probe_tables(db) -> dict[str, bool]:
+    from app.schema_compat import CARECONNECT_TABLE_COLUMNS, get_table_columns
+
     available: dict[str, bool] = {}
-    for table, col in [
-        ("users", "id"),
-        ("relationships", "id"),
-        ("profiles", "id"),
-        ("patients", "id"),
-        ("medications", "id"),
-        ("checkins", "id"),
-    ]:
+    for table in sorted(CARECONNECT_TABLE_COLUMNS):
         try:
-            db.table(table).select(col).limit(1).execute()
+            get_table_columns(db, table)
             available[table] = True
             _ok(f"{table} — accessible")
         except Exception as exc:
@@ -78,6 +73,15 @@ def probe_tables(db) -> dict[str, bool]:
                 if isinstance(arg, dict):
                     message = arg.get("message", exc)
             _fail(f"{table} — {message}")
+
+    for table, col in [("profiles", "id"), ("patients", "id")]:
+        try:
+            db.table(table).select(col).limit(1).execute()
+            available[table] = True
+            _ok(f"{table} — accessible (PillBox optional)")
+        except Exception:
+            available[table] = False
+            _warn(f"{table} — not present (CareConnect-only database)")
     return available
 
 

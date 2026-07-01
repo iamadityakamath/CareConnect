@@ -5,61 +5,16 @@ import json
 from supabase import Client
 
 from app.db_utils import first_row
+from app.schema_compat import (
+    filter_table_payload,
+    get_table_columns,
+    is_missing_column_error,
+    table_select_expr,
+)
 
 _MEDICATIONS_ID_COLUMN: str | None = None
-_MEDICATIONS_COLUMNS: frozenset[str] | None = None
-_USERS_COLUMNS: frozenset[str] | None = None
 _PATIENTS_TABLE_AVAILABLE: bool | None = None
 _DOSE_INSTRUCTIONS_PREFIX = "__dose_json:"
-
-_USERS_BASE_COLUMNS = (
-    "id",
-    "email",
-    "auth_email",
-    "full_name",
-    "last_name",
-    "role",
-    "phone",
-    "timezone",
-    "account_status",
-    "login_code",
-    "login_code_set_at",
-    "created_at",
-)
-_USERS_OPTIONAL_DETAIL_COLUMNS = ("date_of_birth", "address", "notes")
-_USERS_PROBE_COLUMNS = _USERS_BASE_COLUMNS + _USERS_OPTIONAL_DETAIL_COLUMNS
-
-_MEDICATIONS_PROBE_COLUMNS = (
-    "elder_id",
-    "patient_id",
-    "name",
-    "dosage",
-    "dosage_text",
-    "form",
-    "instructions",
-    "dose_instructions",
-    "frequency",
-    "scheduled_times",
-    "active",
-    "created_at",
-    "created_by",
-)
-
-
-def _postgres_error_code(exc: Exception) -> str | None:
-    """Extract a Postgres error code from a Supabase/PostgREST exception."""
-    args = getattr(exc, "args", ())
-    if args and isinstance(args[0], dict):
-        return args[0].get("code")
-    return getattr(exc, "code", None)
-
-
-def _is_missing_column_error(exc: Exception) -> bool:
-    code = _postgres_error_code(exc)
-    if code == "42703":
-        return True
-    message = str(exc).lower()
-    return "does not exist" in message and "column" in message
 
 
 def get_medications_id_column(db: Client) -> str:
@@ -74,7 +29,7 @@ def get_medications_id_column(db: Client) -> str:
             _MEDICATIONS_ID_COLUMN = column
             return column
         except Exception as exc:
-            if _is_missing_column_error(exc):
+            if is_missing_column_error(exc):
                 continue
             raise
 
@@ -89,21 +44,7 @@ def medications_use_patient_id(db: Client) -> bool:
 
 def get_medications_columns(db: Client) -> frozenset[str]:
     """Return ``medications`` columns that exist in the connected database."""
-    global _MEDICATIONS_COLUMNS
-    if _MEDICATIONS_COLUMNS is not None:
-        return _MEDICATIONS_COLUMNS
-
-    available: set[str] = set()
-    for column in _MEDICATIONS_PROBE_COLUMNS:
-        try:
-            db.table("medications").select(column).limit(1).execute()
-            available.add(column)
-        except Exception as exc:
-            if not _is_missing_column_error(exc):
-                raise
-
-    _MEDICATIONS_COLUMNS = frozenset(available)
-    return _MEDICATIONS_COLUMNS
+    return get_table_columns(db, "medications")
 
 
 def prepare_medication_write_payload(db: Client, data: dict) -> dict:
@@ -152,30 +93,12 @@ def prepare_medication_write_payload(db: Client, data: dict) -> dict:
 
 def get_users_columns(db: Client) -> frozenset[str]:
     """Return ``users`` columns that exist in the connected database."""
-    global _USERS_COLUMNS
-    if _USERS_COLUMNS is not None:
-        return _USERS_COLUMNS
-
-    available: set[str] = set()
-    for column in _USERS_PROBE_COLUMNS:
-        try:
-            db.table("users").select(column).limit(1).execute()
-            available.add(column)
-        except Exception as exc:
-            if not _is_missing_column_error(exc):
-                raise
-
-    _USERS_COLUMNS = frozenset(available)
-    return _USERS_COLUMNS
+    return get_table_columns(db, "users")
 
 
 def users_select_expr(db: Client, *columns: str) -> str:
     """Build a safe ``users`` select list, skipping columns absent from the schema."""
-    allowed = get_users_columns(db)
-    selected = [column for column in columns if column in allowed]
-    if not selected:
-        selected = ["id"]
-    return ", ".join(dict.fromkeys(selected))
+    return table_select_expr(db, "users", *columns)
 
 
 def has_patients_table(db: Client) -> bool:
@@ -194,15 +117,17 @@ def has_patients_table(db: Client) -> bool:
 
 def filter_users_payload(db: Client, payload: dict) -> dict:
     """Drop ``users`` fields that are not present in the connected schema."""
-    allowed = get_users_columns(db)
-    return {key: value for key, value in payload.items() if key in allowed}
+    return filter_table_payload(db, "users", payload)
 
 
 def fetch_user_row(db: Client, user_id: str) -> dict | None:
     """Fetch a ``users`` row using only columns that exist in the schema."""
-    columns = ", ".join(sorted(get_users_columns(db)))
     return first_row(
-        db.table("users").select(columns).eq("id", user_id).limit(1).execute()
+        db.table("users")
+        .select(table_select_expr(db, "users"))
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
     )
 
 
